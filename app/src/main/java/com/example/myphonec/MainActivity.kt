@@ -8,13 +8,13 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -56,7 +56,7 @@ fun MainScreen() {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xff131313)
+        color = Color(0xff131313) // App background remains gray
     ) {
         Scaffold(
             bottomBar = {
@@ -159,63 +159,72 @@ fun BottomNavigationBar(navController: androidx.navigation.NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    NavigationBar(
-        containerColor = Color.Black.copy(alpha = 0.9f),
-        tonalElevation = 0.dp,
-        windowInsets = WindowInsets(0),
+    Column(
         modifier = Modifier
-            .padding(start = 48.dp, end = 48.dp, bottom = 24.dp)
-            .navigationBarsPadding()
-            .height(60.dp)
-            .clip(RoundedCornerShape(30.dp))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), RoundedCornerShape(30.dp))
+            .fillMaxWidth()
+            .background(Color.Black) // Black area covering bottom and safe area
     ) {
-        val items = listOf(
-            Triple("phone", "PHONE", R.drawable.phone),
-            Triple("pc", "PC", R.drawable.container)
-        )
-
-        items.forEach { (route, label, iconRes) ->
-            val isSelected = currentDestination?.hierarchy?.any { it.route == route } == true
-            
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = {
-                    if (!isSelected) {
-                        navController.navigate(route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                },
-                icon = {
-                    Icon(
-                        painter = painterResource(id = iconRes),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                },
-                label = { 
-                    Text(
-                        text = label, 
-                        style = TextStyle(
-                            fontSize = 10.sp, 
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
-                        )
-                    ) 
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Color(0xff22d3ee),
-                    selectedTextColor = Color(0xff22d3ee),
-                    unselectedIconColor = Color(0xff71717a),
-                    unselectedTextColor = Color(0xff71717a),
-                    indicatorColor = Color(0xff22d3ee).copy(alpha = 0.12f)
-                )
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 10.dp)
+                .fillMaxWidth()
+                .height(68.dp)
+                .clip(RoundedCornerShape(34.dp))
+                .background(Color(0xFF111111)), // Pill Container background
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val items = listOf(
+                Triple("phone", "PHONE", R.drawable.phone),
+                Triple("pc", "PC", R.drawable.container)
             )
+
+            items.forEach { (route, label, iconRes) ->
+                val isSelected = currentDestination?.hierarchy?.any { it.route == route } == true
+                
+                Box(
+                    modifier = Modifier
+                        .height(50.dp)
+                        .width(110.dp)
+                        .clip(RoundedCornerShape(25.dp))
+                        .background(if (isSelected) Color(0xff22d3ee).copy(alpha = 0.15f) else Color.Transparent)
+                        .clickable {
+                            if (!isSelected) {
+                                navController.navigate(route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = null,
+                            tint = if (isSelected) Color(0xff22d3ee) else Color(0xff71717a),
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            text = label,
+                            color = if (isSelected) Color(0xff22d3ee) else Color(0xff71717a),
+                            style = TextStyle(
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 0.5.sp
+                            )
+                        )
+                    }
+                }
+            }
         }
+        // This ensures the area under the floating dock is also black (respecting system nav bar)
+        Spacer(modifier = Modifier.navigationBarsPadding())
     }
 }
