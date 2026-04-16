@@ -9,14 +9,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -151,7 +149,7 @@ fun CompareScreen(onBackClick: () -> Unit) {
                                 SpecRow("SHADERS", gpuA.coreCount.toString(), gpuB.coreCount.toString(), gpuA.coreCount > gpuB.coreCount, gpuB.coreCount > gpuA.coreCount),
                                 SpecRow("CLOCK", gpuA.clockSpeed, gpuB.clockSpeed, gpuA.clockSpeedValue > gpuB.clockSpeedValue, gpuB.clockSpeedValue > gpuA.clockSpeedValue),
                                 SpecRow("MEM TYPE", gpuA.memoryType, gpuB.memoryType, false, false),
-                                SpecRow("TDP", gpuA.tdp, gpuB.tdp, gpuA.tdpValue < gpuB.tdpValue, gpuB.tdpValue < gpuA.tdpValue)
+                                SpecRow("TDP", gpuA.tdp, gpuB.tdp, gpuA.tdpValue < gpuB.tdpValue, gpuB.tdpValue < cpuA.tdpValue)
                             )
                         )
                     }
@@ -169,7 +167,10 @@ fun ComparisonSelectors(
     onSelectA: (String) -> Unit,
     onSelectB: (String) -> Unit
 ) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), 
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         DropdownSelector(label = "COMPONENT A", selected = itemA, options = options, onSelect = onSelectA, modifier = Modifier.weight(1f))
         DropdownSelector(label = "COMPONENT B", selected = itemB, options = options, onSelect = onSelectB, modifier = Modifier.weight(1f))
     }
@@ -184,13 +185,21 @@ fun DropdownSelector(label: String, selected: String, options: List<String>, onS
             onClick = { expanded = true },
             shape = RoundedCornerShape(12.dp),
             color = Color(0xff1f1f1f).copy(alpha = 0.6f),
-            border = BorderStroke(1.dp, Color(0xff00e5ff).copy(alpha = 0.2f))
+            border = BorderStroke(1.dp, Color(0xff00e5ff).copy(alpha = 0.2f)),
+            modifier = Modifier.fillMaxHeight().defaultMinSize(minHeight = 84.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp).fillMaxWidth().fillMaxHeight()) {
                 Text(label, color = Color(0xffbac9cc), style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold))
                 Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(selected, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = selected, 
+                        color = Color.White, 
+                        fontSize = 14.sp, 
+                        fontWeight = FontWeight.Bold, 
+                        modifier = Modifier.weight(1f),
+                        minLines = 2
+                    )
                     Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Color(0xff00e5ff))
                 }
             }
@@ -220,7 +229,6 @@ fun PerformanceReport(nameA: String, scoreA: Float, subA: String, nameB: String,
                     Text("ANALYSIS REPORT", color = Color(0xff00e5ff), style = TextStyle(fontSize = 10.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold))
                     Text("Total\nPerformance\nScore", color = Color.White, style = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp))
                 }
-                // Using painterResource because BarChart icon is not in the core icons set
                 Icon(painter = painterResource(id = R.drawable.container), contentDescription = null, tint = Color(0xff00e5ff).copy(alpha = 0.2f), modifier = Modifier.size(48.dp))
             }
 
@@ -279,21 +287,6 @@ fun TechnicalSpecs(specs: List<SpecRow>) {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun ComparisonSelectors(
-    itemA: String,
-    itemB: String,
-    options: List<String>,
-    onSelectA: (String) -> Unit,
-    onSelectB: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        DropdownSelector(label = "COMPONENT A", selected = itemA, options = options, onSelect = onSelectA, modifier = Modifier.weight(1f))
-        DropdownSelector(label = "COMPONENT B", selected = itemB, options = options, onSelect = onSelectB, modifier = Modifier.weight(1f))
     }
 }
 
