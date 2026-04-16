@@ -25,9 +25,12 @@ import androidx.compose.ui.unit.sp
 import com.example.myphonec.ui.theme.MyPhoneCTheme
 
 @Composable
-fun PCToolsScreen() {
+fun PCToolsScreen(
+    modifier: Modifier = Modifier,
+    onNavigateToCompare: () -> Unit
+) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(Color(0xff0a0a0a))
             .verticalScroll(rememberScrollState())
@@ -52,19 +55,22 @@ fun PCToolsScreen() {
         PCToolsCard(
             title = "Compare Components",
             subtitle = "CPU vs CPU, GPU vs GPU",
-            iconResId = R.drawable.container
+            iconResId = R.drawable.container,
+            onClick = onNavigateToCompare
         )
         
         PCToolsCard(
             title = "Build PC",
             subtitle = "Custom configuration",
-            iconResId = R.drawable.container
+            iconResId = R.drawable.container,
+            onClick = { /* Future */ }
         )
         
         PCToolsCard(
             title = "Bottleneck",
             subtitle = "Analyze CPU & GPU balance",
-            iconResId = R.drawable.container
+            iconResId = R.drawable.container,
+            onClick = { /* Future */ }
         )
 
         // PC Image Banner
@@ -83,14 +89,14 @@ fun PCToolsScreen() {
 }
 
 @Composable
-fun PCToolsCard(title: String, subtitle: String, iconResId: Int) {
+fun PCToolsCard(title: String, subtitle: String, iconResId: Int, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(Color(0xff1f1f1f).copy(alpha = 0.3f))
             .border(BorderStroke(1.dp, Color(0xff00e5ff).copy(alpha = 0.2f)), RoundedCornerShape(14.dp))
-            .clickable { /* Action */ }
+            .clickable(onClick = onClick)
             .padding(24.dp)
     ) {
         Row(
@@ -129,7 +135,7 @@ fun PCToolsCard(title: String, subtitle: String, iconResId: Int) {
                 )
             }
             
-            // Arrow Icon (using the icon drawable)
+            // Arrow Icon
             Icon(
                 painter = painterResource(id = R.drawable.icon),
                 contentDescription = null,
@@ -144,6 +150,6 @@ fun PCToolsCard(title: String, subtitle: String, iconResId: Int) {
 @Composable
 fun PCToolsScreenPreview() {
     MyPhoneCTheme {
-        PCToolsScreen()
+        PCToolsScreen(onNavigateToCompare = {})
     }
 }

@@ -97,7 +97,7 @@ fun MainScreen() {
             ) {
                 composable("phone") { 
                     MyPhoneScreen(
-                        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
+                        modifier = Modifier.padding(bottom = if (showBottomBar) innerPadding.calculateBottomPadding() else 0.dp),
                         onNavigateToDetails = { navController.navigate("device_details") },
                         onNavigateToProcessor = { navController.navigate("processor_info") },
                         onNavigateToSystemDetails = { navController.navigate("system_details") },
@@ -109,9 +109,10 @@ fun MainScreen() {
                     ) 
                 }
                 composable("pc") { 
-                    Box(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
-                        PCToolsScreen()
-                    }
+                    PCToolsScreen(
+                        modifier = Modifier.padding(bottom = if (showBottomBar) innerPadding.calculateBottomPadding() else 0.dp),
+                        onNavigateToCompare = { navController.navigate("compare_components") }
+                    )
                 }
                 composable("login") {
                     LoginScreen(
@@ -127,6 +128,9 @@ fun MainScreen() {
                             }
                         }
                     )
+                }
+                composable("compare_components") {
+                    CompareScreen(onBackClick = { navController.popBackStack() })
                 }
                 composable("device_details") { 
                     DeviceDetailsScreen(onBackClick = { navController.popBackStack() }) 
