@@ -112,7 +112,8 @@ fun MainScreen() {
                     PCToolsScreen(
                         modifier = Modifier.padding(bottom = if (showBottomBar) innerPadding.calculateBottomPadding() else 0.dp),
                         onNavigateToCompare = { navController.navigate("compare_components") },
-                        onNavigateToBuildPC = { navController.navigate("build_pc") }
+                        onNavigateToBuildPC = { navController.navigate("build_pc") },
+                        onNavigateToBottleneck = { navController.navigate("bottleneck_calculator") }
                     )
                 }
                 composable("login") {
@@ -135,6 +136,9 @@ fun MainScreen() {
                 }
                 composable("build_pc") {
                     BuildRigScreen(onBackClick = { navController.popBackStack() })
+                }
+                composable("bottleneck_calculator") {
+                    BottleneckCalculatorScreen(onBackClick = { navController.popBackStack() })
                 }
                 composable("device_details") { 
                     DeviceDetailsScreen(onBackClick = { navController.popBackStack() }) 
