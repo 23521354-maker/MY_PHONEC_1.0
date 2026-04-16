@@ -27,7 +27,8 @@ import com.example.myphonec.ui.theme.MyPhoneCTheme
 @Composable
 fun PCToolsScreen(
     modifier: Modifier = Modifier,
-    onNavigateToCompare: () -> Unit
+    onNavigateToCompare: () -> Unit,
+    onNavigateToBuildPC: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -63,7 +64,7 @@ fun PCToolsScreen(
             title = "Build PC",
             subtitle = "Custom configuration",
             iconResId = R.drawable.container,
-            onClick = { /* Future */ }
+            onClick = onNavigateToBuildPC
         )
         
         PCToolsCard(
@@ -150,6 +151,6 @@ fun PCToolsCard(title: String, subtitle: String, iconResId: Int, onClick: () -> 
 @Composable
 fun PCToolsScreenPreview() {
     MyPhoneCTheme {
-        PCToolsScreen(onNavigateToCompare = {})
+        PCToolsScreen(onNavigateToCompare = {}, onNavigateToBuildPC = {})
     }
 }
