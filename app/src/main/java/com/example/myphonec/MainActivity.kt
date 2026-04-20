@@ -18,12 +18,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -45,122 +48,216 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+class AppViewModelFactory(
+    private val sessionManager: SessionManager,
+    private val firebaseRepository: FirebaseRepository,
+    private val userBenchmarkRepository: UserBenchmarkRepository,
+    private val leaderboardRepository: LeaderboardRepository,
+    private val authViewModelProvider: () -> AuthViewModel
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return when {
+            modelClass.isAssignableFrom(AuthViewModel::class.java) -> {
+                AuthViewModel(sessionManager, firebaseRepository) as T
+            }
+            modelClass.isAssignableFrom(LeaderboardViewModel::class.java) -> {
+                LeaderboardViewModel(leaderboardRepository) as T
+            }
+            modelClass.isAssignableFrom(PCBuilderViewModel::class.java) -> {
+                PCBuilderViewModel(firebaseRepository) as T
+            }
+            modelClass.isAssignableFrom(BenchmarkViewModel::class.java) -> {
+                BenchmarkViewModel(firebaseRepository, authViewModelProvider()) as T
+            }
+            modelClass.isAssignableFrom(UserProfileViewModel::class.java) -> {
+                UserProfileViewModel(userBenchmarkRepository, authViewModelProvider()) as T
+            }
+            else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+        }
+    }
+}
+
 @Composable
 fun MainScreen() {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val firebaseRepository = remember { FirebaseRepository() }
+    val userBenchmarkRepository = remember { UserBenchmarkRepository() }
+    val leaderboardRepository = remember { LeaderboardRepository() }
+    
+    val authViewModel: AuthViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return AuthViewModel(sessionManager, firebaseRepository) as T
+            }
+        }
+    )
+    
+    val appViewModelFactory = remember(authViewModel) {
+        AppViewModelFactory(
+            sessionManager, 
+            firebaseRepository, 
+            userBenchmarkRepository, 
+            leaderboardRepository
+        ) { authViewModel }
+    }
+    
+    val leaderboardViewModel: LeaderboardViewModel = viewModel(factory = appViewModelFactory)
+    val pcBuilderViewModel: PCBuilderViewModel = viewModel(factory = appViewModelFactory)
+    val benchmarkViewModel: BenchmarkViewModel = viewModel(factory = appViewModelFactory)
+    val userProfileViewModel: UserProfileViewModel = viewModel(factory = appViewModelFactory)
+    
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val authViewModel: AuthViewModel = viewModel()
+    
+    val authState by authViewModel.authState.collectAsState()
+    
+    val startDestination = remember(authState.isLoading, authState.isLoggedIn) {
+        if (authState.isLoading) null
+        else if (authState.isLoggedIn) "phone"
+        else "login"
+    }
     
     val showBottomBar = currentRoute == "phone" || currentRoute == "pc"
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xff131313) // App background remains gray
+        color = Color(0xff131313)
     ) {
-        Scaffold(
-            bottomBar = {
-                if (showBottomBar) {
-                    BottomNavigationBar(navController)
+        if (startDestination != null) {
+            Scaffold(
+                bottomBar = {
+                    if (showBottomBar) {
+                        BottomNavigationBar(navController)
+                    }
+                },
+                containerColor = Color.Transparent
+            ) { innerPadding ->
+                NavHost(
+                    navController = navController,
+                    startDestination = startDestination,
+                    modifier = Modifier.fillMaxSize(),
+                    enterTransition = {
+                        slideInHorizontally(
+                            initialOffsetX = { it },
+                            animationSpec = tween(400, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    exitTransition = {
+                        slideOutHorizontally(
+                            targetOffsetX = { -it },
+                            animationSpec = tween(400, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popEnterTransition = {
+                        slideInHorizontally(
+                            initialOffsetX = { -it },
+                            animationSpec = tween(400, easing = FastOutSlowInEasing)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutHorizontally(
+                            targetOffsetX = { it },
+                            animationSpec = tween(400, easing = FastOutSlowInEasing)
+                        )
+                    }
+                ) {
+                    composable("phone") { 
+                        MyPhoneScreen(
+                            modifier = Modifier.padding(bottom = if (showBottomBar) innerPadding.calculateBottomPadding() else 0.dp),
+                            authViewModel = authViewModel,
+                            userProfileViewModel = userProfileViewModel,
+                            onNavigateToDetails = { navController.navigate("device_details") },
+                            onNavigateToProcessor = { navController.navigate("processor_info") },
+                            onNavigateToSystemDetails = { navController.navigate("system_details") },
+                            onNavigateToScreenTest = { navController.navigate("screen_test") },
+                            onNavigateToSensors = { navController.navigate("sensors") },
+                            onNavigateToBattery = { navController.navigate("battery_health") },
+                            onNavigateToPerformance = { navController.navigate("performance") },
+                            onNavigateToBenchmark = { navController.navigate("benchmark") },
+                            onNavigateToLogin = { navController.navigate("login") },
+                            onNavigateToLeaderboard = { navController.navigate("leaderboard") }
+                        ) 
+                    }
+                    composable("pc") { 
+                        PCToolsScreen(
+                            modifier = Modifier.padding(bottom = if (showBottomBar) innerPadding.calculateBottomPadding() else 0.dp),
+                            onNavigateToCompare = { navController.navigate("compare_components") },
+                            onNavigateToBuildPC = { navController.navigate("build_pc") },
+                            onNavigateToBottleneck = { navController.navigate("bottleneck_calculator") }
+                        )
+                    }
+                    composable("leaderboard") {
+                        LeaderboardScreen(
+                            onBackClick = { navController.popBackStack() },
+                            viewModel = leaderboardViewModel
+                        )
+                    }
+                    composable("benchmark") {
+                        BenchmarkScreen(
+                            onBackClick = { navController.popBackStack() },
+                            viewModel = benchmarkViewModel
+                        )
+                    }
+                    composable("login") {
+                        LoginScreen(
+                            authViewModel = authViewModel,
+                            onLoginSuccess = { 
+                                navController.navigate("phone") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            },
+                            onSkipLogin = { 
+                                navController.navigate("phone") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable("compare_components") {
+                        CompareScreen(onBackClick = { navController.popBackStack() })
+                    }
+                    composable("build_pc") {
+                        BuildRigScreen(
+                            onBackClick = { navController.popBackStack() },
+                            viewModel = pcBuilderViewModel
+                        )
+                    }
+                    composable("bottleneck_calculator") {
+                        BottleneckCalculatorScreen(onBackClick = { navController.popBackStack() })
+                    }
+                    composable("device_details") { 
+                        DeviceDetailsScreen(onBackClick = { navController.popBackStack() }) 
+                    }
+                    composable("processor_info") { 
+                        ProcessorInfoScreen(onBackClick = { navController.popBackStack() })
+                    }
+                    composable("system_details") {
+                        SystemDetailsScreen(onBackClick = { navController.popBackStack() })
+                    }
+                    composable("screen_test") {
+                        ScreenTestScreen(onBackClick = { navController.popBackStack() })
+                    }
+                    composable("sensors") {
+                        SensorsScreen(onBackClick = { navController.popBackStack() })
+                    }
+                    composable("battery_health") {
+                        BatteryHealthScreen(onBackClick = { navController.popBackStack() })
+                    }
+                    composable("performance") {
+                        PerformanceScreen(onBackClick = { navController.popBackStack() })
+                    }
                 }
-            },
-            containerColor = Color.Transparent
-        ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = "phone",
+            }
+        } else {
+            Box(
                 modifier = Modifier.fillMaxSize(),
-                enterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { it },
-                        animationSpec = tween(400, easing = FastOutSlowInEasing)
-                    )
-                },
-                exitTransition = {
-                    slideOutHorizontally(
-                        targetOffsetX = { -it },
-                        animationSpec = tween(400, easing = FastOutSlowInEasing)
-                    )
-                },
-                popEnterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { -it },
-                        animationSpec = tween(400, easing = FastOutSlowInEasing)
-                    )
-                },
-                popExitTransition = {
-                    slideOutHorizontally(
-                        targetOffsetX = { it },
-                        animationSpec = tween(400, easing = FastOutSlowInEasing)
-                    )
-                }
+                contentAlignment = Alignment.Center
             ) {
-                composable("phone") { 
-                    MyPhoneScreen(
-                        modifier = Modifier.padding(bottom = if (showBottomBar) innerPadding.calculateBottomPadding() else 0.dp),
-                        onNavigateToDetails = { navController.navigate("device_details") },
-                        onNavigateToProcessor = { navController.navigate("processor_info") },
-                        onNavigateToSystemDetails = { navController.navigate("system_details") },
-                        onNavigateToScreenTest = { navController.navigate("screen_test") },
-                        onNavigateToSensors = { navController.navigate("sensors") },
-                        onNavigateToBattery = { navController.navigate("battery_health") },
-                        onNavigateToPerformance = { navController.navigate("performance") },
-                        onNavigateToLogin = { navController.navigate("login") }
-                    ) 
-                }
-                composable("pc") { 
-                    PCToolsScreen(
-                        modifier = Modifier.padding(bottom = if (showBottomBar) innerPadding.calculateBottomPadding() else 0.dp),
-                        onNavigateToCompare = { navController.navigate("compare_components") },
-                        onNavigateToBuildPC = { navController.navigate("build_pc") },
-                        onNavigateToBottleneck = { navController.navigate("bottleneck_calculator") }
-                    )
-                }
-                composable("login") {
-                    LoginScreen(
-                        authViewModel = authViewModel,
-                        onLoginSuccess = { 
-                            navController.navigate("phone") {
-                                popUpTo("login") { inclusive = true }
-                            }
-                        },
-                        onSkipLogin = { 
-                            navController.navigate("phone") {
-                                popUpTo("login") { inclusive = true }
-                            }
-                        }
-                    )
-                }
-                composable("compare_components") {
-                    CompareScreen(onBackClick = { navController.popBackStack() })
-                }
-                composable("build_pc") {
-                    BuildRigScreen(onBackClick = { navController.popBackStack() })
-                }
-                composable("bottleneck_calculator") {
-                    BottleneckCalculatorScreen(onBackClick = { navController.popBackStack() })
-                }
-                composable("device_details") { 
-                    DeviceDetailsScreen(onBackClick = { navController.popBackStack() }) 
-                }
-                composable("processor_info") { 
-                    ProcessorInfoScreen(onBackClick = { navController.popBackStack() })
-                }
-                composable("system_details") {
-                    SystemDetailsScreen(onBackClick = { navController.popBackStack() })
-                }
-                composable("screen_test") {
-                    ScreenTestScreen(onBackClick = { navController.popBackStack() })
-                }
-                composable("sensors") {
-                    SensorsScreen(onBackClick = { navController.popBackStack() })
-                }
-                composable("battery_health") {
-                    BatteryHealthScreen(onBackClick = { navController.popBackStack() })
-                }
-                composable("performance") {
-                    PerformanceScreen(onBackClick = { navController.popBackStack() })
-                }
+                CircularProgressIndicator(color = Color(0xff22d3ee))
             }
         }
     }
@@ -174,7 +271,7 @@ fun BottomNavigationBar(navController: androidx.navigation.NavHostController) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black) // Black area covering bottom and safe area
+            .background(Color.Black)
     ) {
         Row(
             modifier = Modifier
@@ -182,7 +279,7 @@ fun BottomNavigationBar(navController: androidx.navigation.NavHostController) {
                 .fillMaxWidth()
                 .height(68.dp)
                 .clip(RoundedCornerShape(34.dp))
-                .background(Color(0xFF111111)), // Pill Container background
+                .background(Color(0xFF111111)),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -236,7 +333,6 @@ fun BottomNavigationBar(navController: androidx.navigation.NavHostController) {
                 }
             }
         }
-        // This ensures the area under the floating dock is also black (respecting system nav bar)
         Spacer(modifier = Modifier.navigationBarsPadding())
     }
 }
