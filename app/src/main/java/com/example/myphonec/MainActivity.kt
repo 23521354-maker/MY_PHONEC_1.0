@@ -53,6 +53,7 @@ class AppViewModelFactory(
     private val firebaseRepository: FirebaseRepository,
     private val userBenchmarkRepository: UserBenchmarkRepository,
     private val leaderboardRepository: LeaderboardRepository,
+    private val aiRepository: BuildAiRepository,
     private val authViewModelProvider: () -> AuthViewModel
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
@@ -65,13 +66,22 @@ class AppViewModelFactory(
                 LeaderboardViewModel(leaderboardRepository) as T
             }
             modelClass.isAssignableFrom(PCBuilderViewModel::class.java) -> {
-                PCBuilderViewModel(firebaseRepository) as T
+                PCBuilderViewModel(firebaseRepository, aiRepository) as T
             }
             modelClass.isAssignableFrom(BenchmarkViewModel::class.java) -> {
                 BenchmarkViewModel(firebaseRepository, authViewModelProvider()) as T
             }
             modelClass.isAssignableFrom(UserProfileViewModel::class.java) -> {
                 UserProfileViewModel(userBenchmarkRepository, authViewModelProvider()) as T
+            }
+            modelClass.isAssignableFrom(AdminViewModel::class.java) -> {
+                AdminViewModel(firebaseRepository) as T
+            }
+            modelClass.isAssignableFrom(CompareViewModel::class.java) -> {
+                CompareViewModel(firebaseRepository) as T
+            }
+            modelClass.isAssignableFrom(BottleneckViewModel::class.java) -> {
+                BottleneckViewModel(firebaseRepository) as T
             }
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
@@ -85,6 +95,7 @@ fun MainScreen() {
     val firebaseRepository = remember { FirebaseRepository() }
     val userBenchmarkRepository = remember { UserBenchmarkRepository() }
     val leaderboardRepository = remember { LeaderboardRepository() }
+    val aiRepository = remember { BuildAiRepository() }
     
     val authViewModel: AuthViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
@@ -100,7 +111,8 @@ fun MainScreen() {
             sessionManager, 
             firebaseRepository, 
             userBenchmarkRepository, 
-            leaderboardRepository
+            leaderboardRepository,
+            aiRepository
         ) { authViewModel }
     }
     
@@ -108,6 +120,9 @@ fun MainScreen() {
     val pcBuilderViewModel: PCBuilderViewModel = viewModel(factory = appViewModelFactory)
     val benchmarkViewModel: BenchmarkViewModel = viewModel(factory = appViewModelFactory)
     val userProfileViewModel: UserProfileViewModel = viewModel(factory = appViewModelFactory)
+    val adminViewModel: AdminViewModel = viewModel(factory = appViewModelFactory)
+    val compareViewModel: CompareViewModel = viewModel(factory = appViewModelFactory)
+    val bottleneckViewModel: BottleneckViewModel = viewModel(factory = appViewModelFactory)
     
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -115,9 +130,9 @@ fun MainScreen() {
     
     val authState by authViewModel.authState.collectAsState()
     
-    val startDestination = remember(authState.isLoading, authState.isLoggedIn) {
+    val startDestination = remember(authState.isLoading, authState.isLoggedIn, authState.isGuest) {
         if (authState.isLoading) null
-        else if (authState.isLoggedIn) "phone"
+        else if (authState.isLoggedIn || authState.isGuest) "phone"
         else "login"
     }
     
@@ -179,7 +194,8 @@ fun MainScreen() {
                             onNavigateToPerformance = { navController.navigate("performance") },
                             onNavigateToBenchmark = { navController.navigate("benchmark") },
                             onNavigateToLogin = { navController.navigate("login") },
-                            onNavigateToLeaderboard = { navController.navigate("leaderboard") }
+                            onNavigateToLeaderboard = { navController.navigate("leaderboard") },
+                            onNavigateToAdmin = { navController.navigate("admin") }
                         ) 
                     }
                     composable("pc") { 
@@ -211,14 +227,24 @@ fun MainScreen() {
                                 }
                             },
                             onSkipLogin = { 
+                                authViewModel.onContinueAsGuest()
                                 navController.navigate("phone") {
                                     popUpTo("login") { inclusive = true }
                                 }
                             }
                         )
                     }
+                    composable("admin") {
+                        AdminScreen(
+                            onBackClick = { navController.popBackStack() },
+                            viewModel = adminViewModel
+                        )
+                    }
                     composable("compare_components") {
-                        CompareScreen(onBackClick = { navController.popBackStack() })
+                        CompareScreen(
+                            onBackClick = { navController.popBackStack() },
+                            viewModel = compareViewModel
+                        )
                     }
                     composable("build_pc") {
                         BuildRigScreen(
@@ -227,7 +253,10 @@ fun MainScreen() {
                         )
                     }
                     composable("bottleneck_calculator") {
-                        BottleneckCalculatorScreen(onBackClick = { navController.popBackStack() })
+                        BottleneckCalculatorScreen(
+                            onBackClick = { navController.popBackStack() },
+                            viewModel = bottleneckViewModel
+                        )
                     }
                     composable("device_details") { 
                         DeviceDetailsScreen(onBackClick = { navController.popBackStack() }) 

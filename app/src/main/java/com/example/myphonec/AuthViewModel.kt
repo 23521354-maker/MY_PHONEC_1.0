@@ -2,6 +2,7 @@ package com.example.myphonec
 
 import android.content.Context
 import android.util.Log
+import androidx.credentials.CustomCredential
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
@@ -15,6 +16,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -44,20 +46,29 @@ class AuthViewModel(
     }
 
     init {
-        checkInitialSession()
+        initializeAuthState()
     }
 
-    private fun checkInitialSession() {
+    private fun initializeAuthState() {
         viewModelScope.launch {
             try {
-                sessionManager.userSession.collect { savedState ->
-                    // Only update if we are not already in a specific state (like loading from a sign-in)
-                    if (!_authState.value.isLoggedIn) {
-                        _authState.update { savedState.copy(isLoading = false) }
+                Log.d(TAG, "Initializing auth state from DataStore...")
+                // Read the first emission to set initial state before UI starts navigating
+                val savedState = sessionManager.userSession.first()
+                _authState.value = savedState.copy(isLoading = false)
+                Log.d(TAG, "Initial auth state: isLoggedIn=${savedState.isLoggedIn}, isGuest=${savedState.isGuest}")
+                
+                // Then continue collecting updates
+                sessionManager.userSession.collect { updatedState ->
+                    // Only update from background if we're not in the middle of a transition
+                    if (!_authState.value.isLoading) {
+                        _authState.update { current ->
+                            updatedState.copy(isLoading = current.isLoading)
+                        }
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error checking initial session", e)
+                Log.e(TAG, "Error initializing auth state", e)
                 _authState.update { it.copy(isLoading = false) }
             }
         }
@@ -67,7 +78,7 @@ class AuthViewModel(
         if (_authState.value.isLoading) return
         
         viewModelScope.launch {
-            Log.d(TAG, "Sign in started")
+            Log.d(TAG, "Google Sign-in started")
             _authState.update { it.copy(isLoading = true, error = null) }
             
             try {
@@ -86,11 +97,11 @@ class AuthViewModel(
                 val result = credentialManager.getCredential(context, request)
                 handleSignInResult(result)
             } catch (e: GetCredentialException) {
-                Log.e(TAG, "Credential Manager error", e)
+                Log.e(TAG, "Credential Manager error: ${e.type}", e)
                 _authState.update { it.copy(isLoading = false, error = "Google Sign-In failed: ${e.message}") }
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected login error", e)
-                _authState.update { it.copy(isLoading = false, error = "An error occurred: ${e.localizedMessage ?: "Unknown error"}") }
+                _authState.update { it.copy(isLoading = false, error = "An error occurred: ${e.localizedMessage}") }
             }
         }
     }
@@ -98,38 +109,48 @@ class AuthViewModel(
     private suspend fun handleSignInResult(result: GetCredentialResponse) {
         try {
             val credential = result.credential
-            if (credential is GoogleIdTokenCredential) {
-                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+            Log.d(TAG, "Received credential type: ${credential.type}")
+
+            val googleIdTokenCredential = when {
+                credential is GoogleIdTokenCredential -> {
+                    Log.d(TAG, "Direct GoogleIdTokenCredential match")
+                    credential
+                }
+                credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL -> {
+                    Log.d(TAG, "CustomCredential match for Google ID Token")
+                    GoogleIdTokenCredential.createFrom(credential.data)
+                }
+                else -> {
+                    Log.e(TAG, "Unsupported credential type: ${credential.type}")
+                    null
+                }
+            }
+
+            if (googleIdTokenCredential != null) {
                 val idToken = googleIdTokenCredential.idToken
-                
                 val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
                 val authResult = auth.signInWithCredential(firebaseCredential).await()
                 val user = authResult.user
                 
                 if (user != null) {
-                    Log.d(TAG, "Firebase Auth success: ${user.uid}")
-                    
                     val uid = user.uid
                     val name = user.displayName ?: "User"
                     val email = user.email ?: ""
                     val photo = user.photoUrl?.toString()
 
-                    // 1. Sync to Firestore (Crucial: try/catch this specifically)
                     try {
                         firebaseRepository.saveOrUpdateUser(uid, name, email, photo)
-                        Log.d(TAG, "Firestore sync success")
                     } catch (e: Exception) {
-                        Log.e(TAG, "Firestore sync failed but continuing", e)
+                        Log.e(TAG, "Firestore sync failed", e)
                     }
 
-                    // 2. Save local session
+                    // Save session first, then update UI state
                     sessionManager.saveSession(uid, name, email, photo)
-                    Log.d(TAG, "Local session saved")
-
-                    // 3. Update UI state (This triggers navigation)
+                    
                     _authState.update {
                         it.copy(
                             isLoggedIn = true,
+                            isGuest = false,
                             uid = uid,
                             userName = name,
                             userEmail = email,
@@ -138,30 +159,48 @@ class AuthViewModel(
                             error = null
                         )
                     }
-                    Log.d(TAG, "Auth state updated - Navigation should trigger")
+                    Log.d(TAG, "Google Sign-in fully completed")
                 } else {
-                    _authState.update { it.copy(isLoading = false, error = "User object is null after sign-in") }
+                    _authState.update { it.copy(isLoading = false, error = "Firebase user is null") }
                 }
             } else {
-                Log.e(TAG, "Unexpected credential type: ${credential.type}")
-                _authState.update { it.copy(isLoading = false, error = "Unexpected credential type") }
+                _authState.update { it.copy(isLoading = false, error = "This login method is not supported yet.") }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Firebase Auth error", e)
-            _authState.update { it.copy(isLoading = false, error = "Firebase Auth failed: ${e.localizedMessage}") }
+            _authState.update { it.copy(isLoading = false, error = "Auth failed: ${e.localizedMessage}") }
         }
     }
 
     fun onContinueAsGuest() {
-        Log.d(TAG, "Continuing as Guest")
-        _authState.update {
-            it.copy(
-                isLoggedIn = false,
-                userName = "Guest User",
-                isGuest = true,
-                isLoading = false,
-                error = null
-            )
+        if (_authState.value.isLoading) return
+        
+        viewModelScope.launch {
+            Log.d(TAG, "Setting up Guest session...")
+            _authState.update { it.copy(isLoading = true, error = null) }
+            
+            try {
+                // 1. Persist to DataStore
+                sessionManager.saveGuestSession()
+                
+                // 2. Update UI State
+                _authState.update {
+                    it.copy(
+                        isLoggedIn = false,
+                        isGuest = true,
+                        userName = "Guest User",
+                        uid = null,
+                        userEmail = null,
+                        photoUrl = null,
+                        isLoading = false,
+                        error = null
+                    )
+                }
+                Log.d(TAG, "Guest session active")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save guest session", e)
+                _authState.update { it.copy(isLoading = false, error = "Could not enter guest mode") }
+            }
         }
     }
 
@@ -171,9 +210,9 @@ class AuthViewModel(
                 auth.signOut()
                 sessionManager.clearSession()
                 _authState.update { AuthState(isLoading = false) }
-                Log.d(TAG, "Signed out successfully")
+                Log.d(TAG, "Sign out successful")
             } catch (e: Exception) {
-                Log.e(TAG, "Sign out error", e)
+                Log.e(TAG, "Sign out failed", e)
             }
         }
     }

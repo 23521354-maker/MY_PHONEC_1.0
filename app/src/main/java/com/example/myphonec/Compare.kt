@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -24,22 +25,18 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompareScreen(onBackClick: () -> Unit) {
+fun CompareScreen(
+    onBackClick: () -> Unit,
+    viewModel: CompareViewModel
+) {
+    val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
-    
-    // CPU State
-    var cpuA by remember { mutableStateOf(ComparisonData.cpus[0]) }
-    var cpuB by remember { mutableStateOf(ComparisonData.cpus[1]) }
-    
-    // GPU State
-    var gpuA by remember { mutableStateOf(ComparisonData.gpus[0]) }
-    var gpuB by remember { mutableStateOf(ComparisonData.gpus[1]) }
 
     Scaffold(
         topBar = {
@@ -84,74 +81,107 @@ fun CompareScreen(onBackClick: () -> Unit) {
                 }
             }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-                contentPadding = PaddingValues(top = 24.dp, bottom = 40.dp)
-            ) {
-                if (selectedTab == 0) {
-                    item {
-                        ComparisonSelectors(
-                            itemA = cpuA.name,
-                            itemB = cpuB.name,
-                            options = ComparisonData.cpus.map { it.name },
-                            onSelectA = { name -> cpuA = ComparisonData.cpus.first { it.name == name } },
-                            onSelectB = { name -> cpuB = ComparisonData.cpus.first { it.name == name } }
-                        )
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (uiState.isLoading) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator(color = Color(0xff00e5ff))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Synchronizing Hardware Database...", color = Color.Gray, fontSize = 12.sp)
                     }
-                    item {
-                        PerformanceReport(
-                            nameA = cpuA.name,
-                            scoreA = cpuA.performanceScore,
-                            subA = "${cpuA.cores} cores / ${cpuA.threads} threads",
-                            nameB = cpuB.name,
-                            scoreB = cpuB.performanceScore,
-                            subB = "${cpuB.cores} cores / ${cpuB.threads} threads",
-                            analysisText = generateCpuAnalysis(cpuA, cpuB)
-                        )
-                    }
-                    item {
-                        TechnicalSpecs(
-                            specs = listOf(
-                                SpecRow("CORES", cpuA.cores.toString(), cpuB.cores.toString(), cpuA.cores > cpuB.cores, cpuB.cores > cpuA.cores),
-                                SpecRow("THREADS", cpuA.threads.toString(), cpuB.threads.toString(), cpuA.threads > cpuB.threads, cpuB.threads > cpuA.threads),
-                                SpecRow("CLOCK SPEED", cpuA.clockSpeed, cpuB.clockSpeed, cpuA.clockSpeedValue > cpuB.clockSpeedValue, cpuB.clockSpeedValue > cpuA.clockSpeedValue),
-                                SpecRow("L3 CACHE", cpuA.l3Cache, cpuB.l3Cache, cpuA.l3CacheValue > cpuB.l3CacheValue, cpuB.l3CacheValue > cpuA.l3CacheValue),
-                                SpecRow("TDP", cpuA.tdp, cpuB.tdp, cpuA.tdpValue < cpuB.tdpValue, cpuB.tdpValue < cpuA.tdpValue)
-                            )
-                        )
+                } else if (uiState.error != null) {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(32.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = Color.Red, modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(uiState.error ?: "Error", color = Color.White, textAlign = TextAlign.Center)
                     }
                 } else {
-                    item {
-                        ComparisonSelectors(
-                            itemA = gpuA.name,
-                            itemB = gpuB.name,
-                            options = ComparisonData.gpus.map { it.name },
-                            onSelectA = { name -> gpuA = ComparisonData.gpus.first { it.name == name } },
-                            onSelectB = { name -> gpuB = ComparisonData.gpus.first { it.name == name } }
-                        )
-                    }
-                    item {
-                        PerformanceReport(
-                            nameA = gpuA.name,
-                            scoreA = gpuA.performanceScore,
-                            subA = "${gpuA.vram} ${gpuA.memoryType}",
-                            nameB = gpuB.name,
-                            scoreB = gpuB.performanceScore,
-                            subB = "${gpuB.vram} ${gpuB.memoryType}",
-                            analysisText = generateGpuAnalysis(gpuA, gpuB)
-                        )
-                    }
-                    item {
-                        TechnicalSpecs(
-                            specs = listOf(
-                                SpecRow("VRAM", gpuA.vram, gpuB.vram, gpuA.vramValue > gpuB.vramValue, gpuB.vramValue > gpuA.vramValue),
-                                SpecRow("SHADERS", gpuA.coreCount.toString(), gpuB.coreCount.toString(), gpuA.coreCount > gpuB.coreCount, gpuB.coreCount > gpuA.coreCount),
-                                SpecRow("CLOCK", gpuA.clockSpeed, gpuB.clockSpeed, gpuA.clockSpeedValue > gpuB.clockSpeedValue, gpuB.clockSpeedValue > gpuA.clockSpeedValue),
-                                SpecRow("MEM TYPE", gpuA.memoryType, gpuB.memoryType, false, false),
-                                SpecRow("TDP", gpuA.tdp, gpuB.tdp, gpuA.tdpValue < gpuB.tdpValue, gpuB.tdpValue < cpuA.tdpValue)
-                            )
-                        )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                        contentPadding = PaddingValues(top = 24.dp, bottom = 40.dp)
+                    ) {
+                        if (selectedTab == 0) {
+                            item {
+                                ComparisonSelectors(
+                                    itemA = uiState.selectedCpuA?.name ?: "Select CPU",
+                                    itemB = uiState.selectedCpuB?.name ?: "Select CPU",
+                                    options = uiState.cpus.map { it.name },
+                                    onSelectA = { viewModel.selectCpuA(it) },
+                                    onSelectB = { viewModel.selectCpuB(it) }
+                                )
+                            }
+                            if (uiState.selectedCpuA != null && uiState.selectedCpuB != null) {
+                                val cpuA = uiState.selectedCpuA!!
+                                val cpuB = uiState.selectedCpuB!!
+                                item {
+                                    PerformanceReport(
+                                        nameA = cpuA.name,
+                                        scoreA = cpuA.score,
+                                        subA = "${cpuA.cores} cores / ${cpuA.threads} threads",
+                                        nameB = cpuB.name,
+                                        scoreB = cpuB.score,
+                                        subB = "${cpuB.cores} cores / ${cpuB.threads} threads",
+                                        analysisText = generateCpuAnalysis(cpuA, cpuB)
+                                    )
+                                }
+                                item {
+                                    TechnicalSpecs(
+                                        specs = listOf(
+                                            SpecRow("CORES", cpuA.cores.toString(), cpuB.cores.toString(), cpuA.cores > cpuB.cores, cpuB.cores > cpuA.cores),
+                                            SpecRow("THREADS", cpuA.threads.toString(), cpuB.threads.toString(), cpuA.threads > cpuB.threads, cpuB.threads > cpuA.threads),
+                                            SpecRow("BASE CLOCK", "${cpuA.baseClock} GHz", "${cpuB.baseClock} GHz", cpuA.baseClock > cpuB.baseClock, cpuB.baseClock > cpuA.baseClock),
+                                            SpecRow("BOOST CLOCK", "${cpuA.boostClock} GHz", "${cpuB.boostClock} GHz", cpuA.boostClock > cpuB.boostClock, cpuB.boostClock > cpuA.boostClock),
+                                            SpecRow("TDP", "${cpuA.tdp}W", "${cpuB.tdp}W", cpuA.tdp < cpuB.tdp, cpuB.tdp < cpuA.tdp),
+                                            SpecRow("PROCESS", cpuA.process, cpuB.process, false, false),
+                                            SpecRow("SOCKET", cpuA.socket.toString(), cpuB.socket.toString(), false, false)
+                                        )
+                                    )
+                                }
+                            }
+                        } else {
+                            item {
+                                ComparisonSelectors(
+                                    itemA = uiState.selectedGpuA?.name ?: "Select GPU",
+                                    itemB = uiState.selectedGpuB?.name ?: "Select GPU",
+                                    options = uiState.gpus.map { it.name },
+                                    onSelectA = { viewModel.selectGpuA(it) },
+                                    onSelectB = { viewModel.selectGpuB(it) }
+                                )
+                            }
+                            if (uiState.selectedGpuA != null && uiState.selectedGpuB != null) {
+                                val gpuA = uiState.selectedGpuA!!
+                                val gpuB = uiState.selectedGpuB!!
+                                item {
+                                    PerformanceReport(
+                                        nameA = gpuA.name,
+                                        scoreA = gpuA.score,
+                                        subA = "${gpuA.vram}GB VRAM",
+                                        nameB = gpuB.name,
+                                        scoreB = gpuB.score,
+                                        subB = "${gpuB.vram}GB VRAM",
+                                        analysisText = generateGpuAnalysis(gpuA, gpuB)
+                                    )
+                                }
+                                item {
+                                    TechnicalSpecs(
+                                        specs = listOf(
+                                            SpecRow("VRAM", "${gpuA.vram} GB", "${gpuB.vram} GB", gpuA.vram > gpuB.vram, gpuB.vram > gpuA.vram),
+                                            SpecRow("BOOST CLOCK", "${gpuA.boostClock} MHz", "${gpuB.boostClock} MHz", gpuA.boostClock > gpuB.boostClock, gpuB.boostClock > gpuA.boostClock),
+                                            SpecRow("TDP", "${gpuA.tdp}W", "${gpuB.tdp}W", gpuA.tdp < gpuB.tdp, gpuB.tdp < gpuA.tdp),
+                                            SpecRow("ARCHITECTURE", gpuA.architecture, gpuB.architecture, false, false)
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -216,7 +246,10 @@ fun DropdownSelector(label: String, selected: String, options: List<String>, onS
 }
 
 @Composable
-fun PerformanceReport(nameA: String, scoreA: Float, subA: String, nameB: String, scoreB: Float, subB: String, analysisText: String) {
+fun PerformanceReport(nameA: String, scoreA: Double, subA: String, nameB: String, scoreB: Double, subB: String, analysisText: String) {
+    // We force maxScore to 100.0 as requested
+    val maxScore = 100.0
+    
     Surface(
         shape = RoundedCornerShape(24.dp),
         color = Color(0xff1f1f1f).copy(alpha = 0.6f),
@@ -232,8 +265,15 @@ fun PerformanceReport(nameA: String, scoreA: Float, subA: String, nameB: String,
                 Icon(painter = painterResource(id = R.drawable.container), contentDescription = null, tint = Color(0xff00e5ff).copy(alpha = 0.2f), modifier = Modifier.size(48.dp))
             }
 
-            ScoreBar(name = nameA, sub = subA, score = scoreA, maxScore = 100f, isWinner = scoreA > scoreB)
-            ScoreBar(name = nameB, sub = subB, score = scoreB, maxScore = 100f, isWinner = scoreB > scoreA, diff = if (scoreB > scoreA) "+${((scoreB/scoreA - 1) * 100).toInt()}%" else if (scoreA > scoreB) "+${((scoreA/scoreB - 1) * 100).toInt()}%" else null)
+            ScoreBar(name = nameA, sub = subA, score = scoreA, maxScore = maxScore, isWinner = scoreA > scoreB)
+            
+            val diffText = if (scoreB > scoreA && scoreA > 0.0) {
+                "+${((scoreB/scoreA - 1) * 100).toInt()}%"
+            } else if (scoreA > scoreB && scoreB > 0.0) {
+                "+${((scoreA/scoreB - 1) * 100).toInt()}%"
+            } else null
+
+            ScoreBar(name = nameB, sub = subB, score = scoreB, maxScore = maxScore, isWinner = scoreB > scoreA, diff = if (scoreB > scoreA) diffText else null)
 
             Text(text = analysisText, color = Color(0xffbac9cc), fontSize = 14.sp, lineHeight = 22.sp)
         }
@@ -241,8 +281,15 @@ fun PerformanceReport(nameA: String, scoreA: Float, subA: String, nameB: String,
 }
 
 @Composable
-fun ScoreBar(name: String, sub: String, score: Float, maxScore: Float, isWinner: Boolean, diff: String? = null) {
-    val animatedProgress by animateFloatAsState(targetValue = score / maxScore, animationSpec = tween(1000, easing = FastOutSlowInEasing))
+fun ScoreBar(name: String, sub: String, score: Double, maxScore: Double, isWinner: Boolean, diff: String? = null) {
+    // Ensure we don't exceed 100%
+    val progress = (score / maxScore).coerceIn(0.0, 1.0).toFloat()
+    
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress, 
+        animationSpec = tween(1000, easing = FastOutSlowInEasing), 
+        label = "progress"
+    )
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -257,7 +304,12 @@ fun ScoreBar(name: String, sub: String, score: Float, maxScore: Float, isWinner:
                 }
                 Text(sub, color = Color.Gray, fontSize = 10.sp)
             }
-            Text(score.toString(), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = String.format(Locale.getDefault(), "%.2f", score), 
+                color = Color.White, 
+                fontSize = 22.sp, 
+                fontWeight = FontWeight.Bold
+            )
         }
         Box(modifier = Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp)).background(Color(0xff353535))) {
             Box(
@@ -292,10 +344,14 @@ fun TechnicalSpecs(specs: List<SpecRow>) {
 
 data class SpecRow(val label: String, val valA: String, val valB: String, val winA: Boolean, val winB: Boolean)
 
-fun generateCpuAnalysis(a: CPUData, b: CPUData): String {
-    val winner = if (a.performanceScore > b.performanceScore) a else b
+fun generateCpuAnalysis(a: CPU, b: CPU): String {
+    val winner = if (a.score > b.score) a else b
     val loser = if (winner == a) b else a
-    val diff = ((winner.performanceScore / loser.performanceScore - 1) * 100).toInt()
+    
+    val diff = if (winner.score > loser.score && loser.score > 0.0) {
+        ((winner.score / loser.score - 1) * 100).toInt()
+    } else 0
+    
     return buildAnnotatedString {
         append("${winner.name} is approximately ")
         withStyle(SpanStyle(color = Color(0xff00e5ff), fontWeight = FontWeight.Bold)) { append("$diff% faster") }
@@ -303,19 +359,17 @@ fun generateCpuAnalysis(a: CPUData, b: CPUData): String {
     }.text
 }
 
-fun generateGpuAnalysis(a: GPUData, b: GPUData): String {
-    val winner = if (a.performanceScore > b.performanceScore) a else b
+fun generateGpuAnalysis(a: GPU, b: GPU): String {
+    val winner = if (a.score > b.score) a else b
     val loser = if (winner == a) b else a
-    val diff = ((winner.performanceScore / loser.performanceScore - 1) * 100).toInt()
+    
+    val diff = if (winner.score > loser.score && loser.score > 0.0) {
+        ((winner.score / loser.score - 1) * 100).toInt()
+    } else 0
+
     return buildAnnotatedString {
         append("${winner.name} provides ")
         withStyle(SpanStyle(color = Color(0xff00e5ff), fontWeight = FontWeight.Bold)) { append("$diff% better frame rates") }
-        append(" in modern titles and ${if (winner.vramValue > loser.vramValue) "handles higher resolution textures better due to ${winner.vram} VRAM." else "offers superior power efficiency."}")
+        append(" in modern titles and ${if (winner.vram > loser.vram) "handles higher resolution textures better due to ${winner.vram}GB VRAM." else "offers superior power efficiency."}")
     }.text
-}
-
-@Preview
-@Composable
-fun ComparePreview() {
-    CompareScreen(onBackClick = {})
 }

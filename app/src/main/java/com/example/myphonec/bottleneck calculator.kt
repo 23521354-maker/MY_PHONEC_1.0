@@ -60,7 +60,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun BottleneckCalculatorScreen(
     onBackClick: () -> Unit,
-    viewModel: BottleneckViewModel = viewModel()
+    viewModel: BottleneckViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -123,8 +123,8 @@ fun BottleneckCalculatorScreen(
                     label = "CPU SELECTOR",
                     value = uiState.selectedCpu?.name ?: "Select CPU",
                     iconColor = Color(0xff00e5ff),
-                    options = ComparisonData.cpus,
-                    onOptionSelected = { viewModel.onCpuSelected(it) },
+                    options = uiState.cpus,
+                    onOptionSelected = { viewModel.onCpuSelected(it.name) },
                     optionLabel = { it.name }
                 )
 
@@ -133,8 +133,8 @@ fun BottleneckCalculatorScreen(
                     label = "GPU SELECTOR",
                     value = uiState.selectedGpu?.name ?: "Select GPU",
                     iconColor = Color(0xff2ff801),
-                    options = ComparisonData.gpus,
-                    onOptionSelected = { viewModel.onGpuSelected(it) },
+                    options = uiState.gpus,
+                    onOptionSelected = { viewModel.onGpuSelected(it.name) },
                     optionLabel = { it.name }
                 )
 

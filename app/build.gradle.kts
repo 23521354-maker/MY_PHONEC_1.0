@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -73,6 +74,11 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.ai)
+
+    // JSON Parsing
+    implementation(libs.gson)
+    implementation(libs.kotlinx.serialization.json)
 
     // Image Loading
     implementation(libs.coil.compose)

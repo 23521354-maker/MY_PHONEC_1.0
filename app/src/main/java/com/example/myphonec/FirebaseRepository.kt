@@ -8,7 +8,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
-import java.util.Date
 
 class FirebaseRepository {
     private val firestore = FirebaseFirestore.getInstance()
@@ -21,9 +20,6 @@ class FirebaseRepository {
             "photoUrl" to photoUrl,
             "createdAt" to FieldValue.serverTimestamp()
         )
-        // Use merge to not overwrite createdAt if it exists, or handle it specifically
-        // But the requirement says createdAt, so we can use set with merge for other fields
-        // and only set createdAt if the document doesn't exist.
         
         val userRef = firestore.collection("users").document(uid)
         val snapshot = userRef.get().await()
@@ -39,6 +35,97 @@ class FirebaseRepository {
             userRef.update(updateMap as Map<String, Any>).await()
         }
     }
+
+    // --- PC Hardware Methods ---
+
+    suspend fun getCPUs(): List<CPU> {
+        return try {
+            firestore.collection("cpus")
+                .orderBy("name")
+                .get()
+                .await()
+                .toObjects(CPU::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getGPUs(): List<GPU> {
+        return try {
+            firestore.collection("gpus")
+                .orderBy("name")
+                .get()
+                .await()
+                .toObjects(GPU::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getMotherboards(): List<Motherboard> {
+        return try {
+            firestore.collection("motherboards")
+                .orderBy("name")
+                .get()
+                .await()
+                .toObjects(Motherboard::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getRAM(): List<RAM> {
+        return try {
+            firestore.collection("ram")
+                .orderBy("name")
+                .get()
+                .await()
+                .toObjects(RAM::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun getPSUs(): List<PSU> {
+        return try {
+            firestore.collection("psu")
+                .orderBy("name")
+                .get()
+                .await()
+                .toObjects(PSU::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun bulkImportCPUs(cpus: List<CPU>) {
+        val batch = firestore.batch()
+        cpus.forEach { cpu ->
+            val ref = firestore.collection("cpus").document(cpu.id.ifBlank { cpu.name.replace(" ", "_").lowercase() })
+            batch.set(ref, cpu)
+        }
+        batch.commit().await()
+    }
+
+    suspend fun bulkImportGPUs(gpus: List<GPU>) {
+        val batch = firestore.batch()
+        gpus.forEach { gpu ->
+            val ref = firestore.collection("gpus").document(gpu.id.ifBlank { gpu.name.replace(" ", "_").lowercase() })
+            batch.set(ref, gpu)
+        }
+        batch.commit().await()
+    }
+
+    suspend fun clearCollection(collectionName: String) {
+        val snapshot = firestore.collection(collectionName).get().await()
+        val batch = firestore.batch()
+        snapshot.documents.forEach { doc ->
+            batch.delete(doc.reference)
+        }
+        batch.commit().await()
+    }
+
+    // --- Benchmark Methods ---
 
     suspend fun saveBenchmarkResult(
         uid: String, 
@@ -59,10 +146,8 @@ class FirebaseRepository {
             "testedAt" to testedAt
         )
 
-        // 1. Save into user_benchmarks (History)
         firestore.collection("user_benchmarks").add(benchmarkData).await()
 
-        // 2. Upload to leaderboard_scores (Best score per user+device)
         val deviceDocId = "${uid}_${deviceModel.replace(" ", "_")}"
         val leaderboardRef = firestore.collection("leaderboard_scores").document(deviceDocId)
         
@@ -88,7 +173,9 @@ class FirebaseRepository {
                     rank = index + 1,
                     name = doc.getString("deviceModel") ?: "Unknown",
                     chipset = doc.getString("chipset") ?: "Unknown",
-                    score = doc.getLong("score")?.toInt() ?: 0
+                    score = doc.getLong("score")?.toInt() ?: 0,
+                    fps = doc.getLong("fps")?.toInt() ?: 0,
+                    userName = doc.getString("userName")
                 )
             } ?: emptyList()
             

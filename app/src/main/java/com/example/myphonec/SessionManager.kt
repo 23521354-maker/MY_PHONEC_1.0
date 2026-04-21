@@ -15,6 +15,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "us
 class SessionManager(private val context: Context) {
     companion object {
         val IS_LOGGED_IN = booleanPreferencesKey("is_logged_in")
+        val IS_GUEST = booleanPreferencesKey("is_guest")
         val USER_UID = stringPreferencesKey("user_uid")
         val USER_NAME = stringPreferencesKey("user_name")
         val USER_EMAIL = stringPreferencesKey("user_email")
@@ -24,6 +25,7 @@ class SessionManager(private val context: Context) {
     val userSession: Flow<AuthState> = context.dataStore.data.map { preferences ->
         AuthState(
             isLoggedIn = preferences[IS_LOGGED_IN] ?: false,
+            isGuest = preferences[IS_GUEST] ?: false,
             uid = preferences[USER_UID],
             userName = preferences[USER_NAME],
             userEmail = preferences[USER_EMAIL],
@@ -34,10 +36,26 @@ class SessionManager(private val context: Context) {
     suspend fun saveSession(uid: String, name: String, email: String, photoUrl: String?) {
         context.dataStore.edit { preferences ->
             preferences[IS_LOGGED_IN] = true
+            preferences[IS_GUEST] = false
             preferences[USER_UID] = uid
             preferences[USER_NAME] = name
             preferences[USER_EMAIL] = email
-            photoUrl?.let { preferences[USER_PHOTO] = it }
+            if (photoUrl != null) {
+                preferences[USER_PHOTO] = photoUrl
+            } else {
+                preferences.remove(USER_PHOTO)
+            }
+        }
+    }
+
+    suspend fun saveGuestSession() {
+        context.dataStore.edit { preferences ->
+            preferences[IS_LOGGED_IN] = false
+            preferences[IS_GUEST] = true
+            preferences[USER_NAME] = "Guest User"
+            preferences.remove(USER_UID)
+            preferences.remove(USER_EMAIL)
+            preferences.remove(USER_PHOTO)
         }
     }
 

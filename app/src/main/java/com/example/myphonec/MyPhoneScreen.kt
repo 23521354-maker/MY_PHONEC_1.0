@@ -56,7 +56,8 @@ fun MyPhoneScreen(
     onNavigateToPerformance: () -> Unit,
     onNavigateToBenchmark: () -> Unit,
     onNavigateToLogin: () -> Unit,
-    onNavigateToLeaderboard: () -> Unit
+    onNavigateToLeaderboard: () -> Unit,
+    onNavigateToAdmin: () -> Unit
 ) {
     val deviceInfo by viewModel.deviceInfo.collectAsState()
     val authState by authViewModel.authState.collectAsState()
@@ -87,6 +88,7 @@ fun MyPhoneScreen(
                 Text(
                     text = "PHONEC",
                     color = Color(0xff22d3ee),
+                    modifier = Modifier.clickable { onNavigateToAdmin() },
                     style = TextStyle(
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
