@@ -10,6 +10,15 @@ android {
     namespace = "com.example.myphonec"
     compileSdk = 35
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release.keystore")
+            storePassword = "lunmalao123"
+            keyAlias = "release_key"
+            keyPassword = "lunmalao123"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.myphonec"
         minSdk = 24
@@ -25,7 +34,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -41,6 +51,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -75,6 +86,8 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.ai)
+    implementation(libs.firebase.appcheck.playintegrity)
+    implementation(libs.firebase.appcheck.debug)
 
     // JSON Parsing
     implementation(libs.gson)

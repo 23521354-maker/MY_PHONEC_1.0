@@ -142,24 +142,6 @@ fun BuildRigScreen(
 
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        // AI Suggest Button
-                        Button(
-                            onClick = { showAiSheet = true },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xff1e1b4b),
-                                contentColor = Color(0xffa5f3fc)
-                            ),
-                            border = BorderStroke(1.dp, Color(0xff22d3ee).copy(alpha = 0.5f))
-                        ) {
-                            if (isAiLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xff22d3ee), strokeWidth = 2.dp)
-                            } else {
-                                Text("✨ AI SUGGEST BUILD", fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
-                            }
-                        }
-
                         // View Report Button
                         Button(
                             onClick = { showReportDialog = true },

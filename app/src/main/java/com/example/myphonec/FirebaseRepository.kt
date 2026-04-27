@@ -9,8 +9,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
+/**
+ * Repository for Firestore operations.
+ * Optimized to ensure Firebase initialization via Application class is respected.
+ */
 class FirebaseRepository {
-    private val firestore = FirebaseFirestore.getInstance()
+    
+    // Using lazy to ensure Firestore is only accessed after MyApplication's onCreate
+    private val firestore by lazy { FirebaseFirestore.getInstance() }
 
     suspend fun saveOrUpdateUser(uid: String, name: String, email: String, photoUrl: String?) {
         val userMap = hashMapOf(

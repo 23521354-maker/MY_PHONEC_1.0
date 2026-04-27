@@ -1,6 +1,7 @@
 package com.example.myphonec
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -27,22 +28,74 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.example.myphonec.ui.theme.MyPhoneCTheme
+import com.google.firebase.Firebase
+import com.google.firebase.appcheck.appCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // 🔑 1. Setup Debug App Check Provider - Gọi TRƯỚC KHI sử dụng bất kỳ dịch vụ Firebase nào
+        setupAppCheck()
+        
+        // 🚀 2. Test Firebase AI
+        testGeminiAI()
+
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         
         setContent {
             MyPhoneCTheme {
                 MainScreen()
+            }
+        }
+    }
+
+    private fun setupAppCheck() {
+        try {
+            val firebaseAppCheck = Firebase.appCheck
+            if (BuildConfig.DEBUG) {
+                // Cho máy ảo (Emulator)
+                firebaseAppCheck.installAppCheckProviderFactory(
+                    DebugAppCheckProviderFactory.getInstance()
+                )
+                Log.d("Firebase", "✅ Debug App Check Provider installed")
+            } else {
+                // Cho thiết bị thật
+                firebaseAppCheck.installAppCheckProviderFactory(
+                    PlayIntegrityAppCheckProviderFactory.getInstance()
+                )
+                Log.d("Firebase", "✅ Play Integrity App Check Provider installed")
+            }
+        } catch (e: Exception) {
+            Log.e("Firebase", "❌ App Check Error: ${e.message}")
+        }
+    }
+
+    private fun testGeminiAI() {
+        lifecycleScope.launch {
+            try {
+                val aiRepository = BuildAiRepository()
+                Log.d("Firebase", "🚀 Testing Gemini AI with gemini-3-flash-preview...")
+                
+                val result = aiRepository.suggestBuild("Xin chào")
+                
+                result.onSuccess { response ->
+                    Log.d("Firebase", "✅ Gemini AI response: $response")
+                }.onFailure { error ->
+                    Log.e("Firebase", "❌ Gemini AI error: ${error.message}")
+                }
+            } catch (e: Exception) {
+                Log.e("Firebase", "❌ Exception: ${e.message}")
             }
         }
     }

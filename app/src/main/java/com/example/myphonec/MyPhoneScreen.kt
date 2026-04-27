@@ -198,7 +198,7 @@ fun MyPhoneScreen(
                     // Row 2: Battery & Performance
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         DiagnosticCardSmall("Battery status", "HEALTH & CYCLE", iconId = R.drawable.battery, modifier = Modifier.weight(1f), onClick = onNavigateToBattery)
-                        DiagnosticCardSmall("Performance", "OPTIMAL STATE", iconId = R.drawable.margin, modifier = Modifier.weight(1f), onClick = onNavigateToPerformance)
+                        DiagnosticCardSmall("Performance", "OPTIMAL STATE", iconId = R.drawable.bottleneck, modifier = Modifier.weight(1f), onClick = onNavigateToPerformance)
                     }
                     
                     // Row 3: Benchmark Test (Large Full Width)

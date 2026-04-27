@@ -57,7 +57,7 @@ fun PCToolsScreen(
         PCToolsCard(
             title = "Compare Components",
             subtitle = "CPU vs CPU, GPU vs GPU",
-            iconResId = R.drawable.container,
+            iconResId = R.drawable.compare,
             onClick = onNavigateToCompare
         )
         
@@ -71,7 +71,7 @@ fun PCToolsScreen(
         PCToolsCard(
             title = "Bottleneck",
             subtitle = "Analyze CPU & GPU balance",
-            iconResId = R.drawable.container,
+            iconResId = R.drawable.bottleneck,
             onClick = onNavigateToBottleneck
         )
 
