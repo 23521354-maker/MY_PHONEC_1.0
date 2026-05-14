@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 val aiRepository = BuildAiRepository()
-                Log.d("Firebase", "🚀 Testing Gemini AI with gemini-3-flash-preview...")
+                Log.d("Firebase", "🚀 Testing Gemini AI (Google AI Studio) gemini-2.5-flash...")
                 
                 val result = aiRepository.suggestBuild("Xin chào")
                 
