@@ -1,273 +1,340 @@
 package com.example.myphonec
 
-import androidx.compose.animation.core.*
+import android.os.Build
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material.icons.filled.EmojiEvents
+import com.example.myphonec.ui.components.EmptyState
+import com.example.myphonec.ui.components.MonoNumber
+import com.example.myphonec.ui.components.SectionHeader
+import com.example.myphonec.ui.components.SkeletonBox
+import com.example.myphonec.ui.components.SurfaceCard
+import com.example.myphonec.ui.theme.AppTheme
+import com.example.myphonec.ui.theme.BodyMedium
+import com.example.myphonec.ui.theme.DisplayMedium
+import com.example.myphonec.ui.theme.LabelUppercase
+import com.example.myphonec.ui.theme.Mono
+import com.example.myphonec.ui.theme.TitleMedium
 
 @Composable
 fun LeaderboardScreen(
     onBackClick: () -> Unit,
-    viewModel: LeaderboardViewModel = viewModel()
+    viewModel: LeaderboardViewModel = viewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val ui by viewModel.uiState.collectAsState()
+    val colors = AppTheme.colors
+    val spacing = AppTheme.spacing
+    val myDevice = remember { Build.MODEL }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xff0a0a0a))
+            .background(colors.surfaceBase)
             .statusBarsPadding()
     ) {
-        // Top Bar
-        Row(
+        TopBar(onBackClick = onBackClick)
+
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = spacing.screenHorizontal),
+            verticalArrangement = Arrangement.spacedBy(spacing.space12),
         ) {
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
-                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.back_icon),
-                    contentDescription = "Back",
-                    tint = Color(0xff22d3ee),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Column {
-                Text(
-                    text = "GLOBAL RANKING",
-                    color = Color(0xff22d3ee),
-                    style = TextStyle(
-                        fontSize = 12.sp, 
-                        fontWeight = FontWeight.Black, 
-                        letterSpacing = 2.sp
-                    )
-                )
-                Text(
-                    text = "Leaderboard",
-                    color = Color.White,
-                    style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                )
-            }
+            Text(
+                text = "Global leaderboard",
+                style = DisplayMedium,
+                color = colors.textPrimary,
+            )
+            SectionHeader(
+                title = "Top ${ui.items.size.coerceAtLeast(0)}",
+                caption = if (ui.items.isEmpty()) "Waiting for results" else "Live · across all devices",
+            )
         }
+
+        Spacer(modifier = Modifier.height(spacing.space16))
 
         Box(modifier = Modifier.fillMaxSize()) {
             when {
-                uiState.isLoading -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(10) { ShimmerLeaderboardRow() }
-                    }
-                }
-                uiState.error != null -> {
-                    ErrorState(message = uiState.error!!, onRetry = { viewModel.observeLeaderboard() })
-                }
-                uiState.items.isEmpty() -> {
-                    EmptyState()
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(uiState.items) { item ->
-                            LeaderboardRow(item)
-                        }
-                    }
-                }
+                ui.isLoading -> LoadingList()
+                ui.error != null -> ErrorState(
+                    message = ui.error!!,
+                    onRetry = { viewModel.observeLeaderboard() }
+                )
+                ui.items.isEmpty() -> EmptyBoard()
+                else -> RankList(items = ui.items, myDeviceModel = myDevice)
             }
         }
     }
 }
 
 @Composable
-fun LeaderboardRow(item: PhoneRankItem) {
-    val isTop3 = item.rank <= 3
-    val accentColor = when (item.rank) {
-        1 -> Color(0xFFFFD700)
-        2 -> Color(0xFFC0C0C0)
-        3 -> Color(0xFFCD7F32)
-        else -> Color(0xff22d3ee)
-    }
-
-    Surface(
+private fun TopBar(onBackClick: () -> Unit) {
+    val colors = AppTheme.colors
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = if (isTop3) {
-                        listOf(accentColor.copy(alpha = 0.15f), Color(0xff1a1a1a))
-                    } else {
-                        listOf(Color(0xff1a1a1a), Color(0xff121212))
-                    }
-                )
-            )
-            .border(
-                1.dp, 
-                if (isTop3) accentColor.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.05f), 
-                RoundedCornerShape(20.dp)
-            ),
-        color = Color.Transparent
+            .padding(horizontal = AppTheme.spacing.space12, vertical = AppTheme.spacing.space12),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
+        IconButton(onClick = onBackClick) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = colors.textPrimary,
+            )
+        }
+        Text(
+            text = "LEADERBOARD",
+            style = LabelUppercase,
+            color = colors.textTertiary,
+        )
+        Spacer(modifier = Modifier.width(48.dp))
+    }
+}
+
+@Composable
+private fun RankList(items: List<PhoneRankItem>, myDeviceModel: String) {
+    val spacing = AppTheme.spacing
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = spacing.screenHorizontal,
+            end = spacing.screenHorizontal,
+            top = spacing.space4,
+            bottom = spacing.space48,
+        ),
+    ) {
+        item { RankHeaderRow() }
+        items(items) { item ->
+            RankRow(
+                item = item,
+                isMine = item.name.equals(myDeviceModel, ignoreCase = true),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RankHeaderRow() {
+    val colors = AppTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "#",
+            style = LabelUppercase,
+            color = colors.textTertiary,
+            modifier = Modifier.width(40.dp),
+        )
+        Text(
+            text = "DEVICE",
+            style = LabelUppercase,
+            color = colors.textTertiary,
+            modifier = Modifier.weight(1.4f),
+        )
+        Text(
+            text = "CHIPSET",
+            style = LabelUppercase,
+            color = colors.textTertiary,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = "SCORE",
+            style = LabelUppercase,
+            color = colors.textTertiary,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(80.dp),
+        )
+    }
+    HorizontalDivider(thickness = 1.dp, color = colors.borderSubtle)
+}
+
+@Composable
+private fun RankRow(item: PhoneRankItem, isMine: Boolean) {
+    val colors = AppTheme.colors
+    val isTop3 = item.rank in 1..3
+
+    val rowBg = if (isMine) colors.cyanWash else androidx.compose.ui.graphics.Color.Transparent
+    val borderColor = when {
+        isTop3 -> colors.cyanPrimary
+        isMine -> colors.cyanGlow
+        else -> androidx.compose.ui.graphics.Color.Transparent
+    }
+
+    Column {
         Row(
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .background(rowBg)
+                .padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Rank Number
+            // Left accent: 2dp colored bar for top3 / mine
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (isTop3) accentColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = item.rank.toString(),
-                    color = if (isTop3) accentColor else Color.Gray,
-                    style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black)
-                )
-            }
+                    .width(2.dp)
+                    .height(28.dp)
+                    .background(borderColor)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
 
-            // Phone Details
-            Column(modifier = Modifier.weight(1f)) {
+            MonoNumber(
+                text = item.rank.toString().padStart(2, '0'),
+                color = if (isTop3) colors.cyanPrimary else colors.textSecondary,
+                modifier = Modifier.width(30.dp),
+            )
+
+            Column(modifier = Modifier.weight(1.4f)) {
                 Text(
                     text = item.name,
-                    color = Color.White,
-                    style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold),
-                    maxLines = 1
+                    style = TitleMedium,
+                    color = if (isMine) colors.cyanInk else colors.textPrimary,
+                    maxLines = 1,
                 )
-                Text(
-                    text = "${item.chipset}${item.userName?.let { " • $it" } ?: ""}",
-                    color = Color.Gray,
-                    style = TextStyle(fontSize = 11.sp),
-                    maxLines = 1
-                )
+                if (!item.userName.isNullOrBlank()) {
+                    Text(
+                        text = item.userName,
+                        style = BodyMedium,
+                        color = colors.textTertiary,
+                        maxLines = 1,
+                    )
+                }
             }
 
-            // Score & FPS
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
+            Text(
+                text = item.chipset,
+                style = Mono.copy(fontSize = 12.sp),
+                color = colors.textSecondary,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+            )
+
+            Column(
+                modifier = Modifier.width(80.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
+                MonoNumber(
                     text = item.score.toString(),
-                    color = if (isTop3) accentColor else Color(0xff22d3ee),
-                    style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    color = colors.textPrimary,
                 )
                 if (item.fps > 0) {
                     Text(
                         text = "${item.fps} FPS",
-                        color = Color.Gray,
-                        style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                        style = Mono.copy(fontSize = 10.sp),
+                        color = colors.textTertiary,
                     )
                 }
             }
         }
+        HorizontalDivider(thickness = 1.dp, color = colors.borderSubtle)
     }
 }
 
 @Composable
-fun ShimmerLeaderboardRow() {
-    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alpha"
-    )
+private fun LoadingList() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = AppTheme.spacing.screenHorizontal),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(10) { ShimmerRow() }
+    }
+}
 
-    Box(
+@Composable
+private fun ShimmerRow() {
+    SkeletonBox(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = alpha * 0.1f))
-            .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(20.dp))
+            .height(56.dp)
     )
 }
 
 @Composable
-fun EmptyState() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+private fun EmptyBoard() {
+    Box(
+        modifier = Modifier.fillMaxSize().padding(AppTheme.spacing.space24),
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            painter = painterResource(id = R.drawable.score_board),
-            contentDescription = null,
-            tint = Color.Gray.copy(alpha = 0.3f),
-            modifier = Modifier.size(80.dp)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "No benchmark results yet",
-            color = Color.Gray,
-            style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium)
+        EmptyState(
+            icon = Icons.Default.EmojiEvents,
+            title = "Nothing benchmarked yet",
+            description = "Be the first to publish a result.\nRun a benchmark to appear on the board.",
         )
     }
 }
 
 @Composable
-fun ErrorState(message: String, onRetry: () -> Unit) {
+private fun ErrorState(message: String, onRetry: () -> Unit) {
+    val colors = AppTheme.colors
+    val shape = RoundedCornerShape(AppTheme.spacing.space12)
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(AppTheme.spacing.space24),
         verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Connection Error",
-            color = Color.White,
-            style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            text = "Connection error",
+            style = TitleMedium,
+            color = colors.textPrimary,
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(AppTheme.spacing.space8))
         Text(
             text = message,
-            color = Color.Gray,
-            style = TextStyle(fontSize = 14.sp),
-            textAlign = TextAlign.Center
+            style = BodyMedium,
+            color = colors.textSecondary,
+            textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onRetry,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xff22d3ee)),
-            shape = RoundedCornerShape(12.dp)
+        Spacer(modifier = Modifier.height(AppTheme.spacing.space24))
+        Box(
+            modifier = Modifier
+                .clip(shape)
+                .background(colors.cyanPrimary, shape)
+                .clickable(onClick = onRetry)
+                .padding(horizontal = 24.dp, vertical = 12.dp),
         ) {
-            Text(text = "Retry", color = Color.Black, fontWeight = FontWeight.Bold)
+            Text(
+                text = "Retry",
+                style = TitleMedium,
+                color = colors.surfaceBase,
+            )
         }
     }
 }

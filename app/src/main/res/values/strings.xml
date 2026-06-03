@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">MY PHONEC</string>
+    <string name="default_web_client_id" translatable="false">272304530561-girvp4jvd6g7ol01mr1h38umakpumof3.apps.googleusercontent.com</string>
 </resources>

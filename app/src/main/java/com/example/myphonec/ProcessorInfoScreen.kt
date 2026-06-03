@@ -25,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myphonec.ui.theme.CyanPrimary
 import com.example.myphonec.ui.theme.MyPhoneCTheme
 import javax.microedition.khronos.egl.EGL10
 import javax.microedition.khronos.egl.EGLConfig
@@ -73,7 +74,7 @@ fun ProcessorInfoScreen(
                         Icon(
                             painter = painterResource(id = R.drawable.back_icon),
                             contentDescription = "Back",
-                            tint = Color(0xff22d3ee)
+                            tint = CyanPrimary
                         )
                     }
                 },

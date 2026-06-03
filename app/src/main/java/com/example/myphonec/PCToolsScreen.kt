@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myphonec.ui.theme.CyanPrimary
 import com.example.myphonec.ui.theme.MyPhoneCTheme
 
 @Composable
@@ -112,13 +113,13 @@ fun PCToolsCard(title: String, subtitle: String, iconResId: Int, onClick: () -> 
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xff22d3ee).copy(alpha = 0.1f)),
+                        .background(CyanPrimary.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         painter = painterResource(id = iconResId),
                         contentDescription = null,
-                        tint = Color(0xff22d3ee),
+                        tint = CyanPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }

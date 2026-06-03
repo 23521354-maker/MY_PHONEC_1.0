@@ -1,45 +1,35 @@
 package com.example.myphonec
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
+import com.example.myphonec.ui.components.Avatar
 import com.example.myphonec.ui.theme.*
-import java.text.SimpleDateFormat
-import java.util.*
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MyPhoneScreen — Redesigned UI, 100% same params as original
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun MyPhoneScreen(
@@ -57,12 +47,11 @@ fun MyPhoneScreen(
     onNavigateToBenchmark: () -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToLeaderboard: () -> Unit,
-    onNavigateToAdmin: () -> Unit
+    onNavigateToAdmin: () -> Unit,
+    onNavigateToProfile: () -> Unit
 ) {
     val deviceInfo by viewModel.deviceInfo.collectAsState()
-    val authState by authViewModel.authState.collectAsState()
-    val profileState by userProfileViewModel.uiState.collectAsState()
-    var showUserMenu by remember { mutableStateOf(false) }
+    val authState  by authViewModel.authState.collectAsState()
 
     LaunchedEffect(authState.isLoggedIn, authState.isGuest) {
         if (!authState.isLoggedIn && !authState.isGuest && !authState.isLoading) {
@@ -70,687 +59,679 @@ fun MyPhoneScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(SurfaceBase),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(32.dp)
+                .padding(horizontal = 20.dp)
+                .padding(top = 12.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            // Top Bar Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "PHONEC",
-                    color = Color(0xff22d3ee),
-                    modifier = Modifier.clickable { onNavigateToAdmin() },
-                    style = TextStyle(
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-1.2).sp
-                    )
-                )
-                
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = onNavigateToLeaderboard,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.05f))
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.score_board),
-                            contentDescription = "Leaderboard",
-                            tint = Color(0xff22d3ee),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
 
-                    Box {
-                        IconButton(
-                            onClick = { showUserMenu = true },
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White.copy(alpha = 0.05f))
-                        ) {
-                            if (authState.photoUrl != null) {
-                                AsyncImage(
-                                    model = authState.photoUrl,
-                                    contentDescription = "Profile",
-                                    modifier = Modifier.size(24.dp).clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.user),
-                                    contentDescription = "Profile",
-                                    tint = Color(0xff22d3ee),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        if (showUserMenu) {
-                            UserMenuPopup(
-                                authState = authState,
-                                profileState = profileState,
-                                onDismiss = { showUserMenu = false },
-                                onLogout = {
-                                    authViewModel.signOut()
-                                    showUserMenu = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Header Section
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "My Phone",
-                    color = Color(0xffe2e2e2),
-                    style = TextStyle(
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-1.8).sp
-                    )
-                )
-                Text(
-                    text = "ACTIVE SESSION: ${authState.userName?.uppercase() ?: "LOCAL DEVICE"}",
-                    color = Color(0xffbac9cc),
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        letterSpacing = 2.8.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+            // ── TOP BAR ──────────────────────────────────────────────────
+            AnimatedEntry(0) {
+                PhoneTopBar(
+                    authState          = authState,
+                    onLeaderboard      = onNavigateToLeaderboard,
+                    onAdmin            = onNavigateToAdmin,
+                    onProfile          = onNavigateToProfile,
                 )
             }
 
-            // Device Info Section
-            DeviceInfoSectionRefined(
-                deviceInfo = deviceInfo,
-                onSystemModelClick = onNavigateToDetails,
-                onProcessorClick = onNavigateToProcessor,
-                onOSVersionClick = onNavigateToSystemDetails
-            )
+            Spacer(Modifier.height(20.dp))
 
-            // Diagnostic Section Redesigned
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = "DIAGNOSTIC CLUSTER", 
-                    color = Color(0xffbac9cc), 
-                    style = TextStyle(fontSize = 12.sp, letterSpacing = 3.6.sp, fontWeight = FontWeight.Bold)
-                )
-                
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Row 1: Screen & Sensors
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        DiagnosticCardSmall("Screen test", "OLED INTEGRITY", iconId = R.drawable.screen, modifier = Modifier.weight(1f), onClick = onNavigateToScreenTest)
-                        DiagnosticCardSmall("Sensors test", "IMU CALIBRATION", iconId = R.drawable.sensor, modifier = Modifier.weight(1f), onClick = onNavigateToSensors)
-                    }
-                    
-                    // Row 2: Battery & Performance
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        DiagnosticCardSmall("Battery status", "HEALTH & CYCLE", iconId = R.drawable.battery, modifier = Modifier.weight(1f), onClick = onNavigateToBattery)
-                        DiagnosticCardSmall("Performance", "OPTIMAL STATE", iconId = R.drawable.bottleneck, modifier = Modifier.weight(1f), onClick = onNavigateToPerformance)
-                    }
-                    
-                    // Row 3: Benchmark Test (Large Full Width)
-                    BenchmarkCard(onClick = onNavigateToBenchmark)
-                }
+            // ── GREETING ─────────────────────────────────────────────────
+            AnimatedEntry(1) {
+                GreetingSection(userName = authState.userName)
             }
-            
-            Spacer(modifier = Modifier.height(100.dp))
+
+            Spacer(Modifier.height(20.dp))
+
+            // ── HERO CARD ─────────────────────────────────────────────────
+            AnimatedEntry(2) {
+                DeviceHeroCard(
+                    deviceInfo         = deviceInfo,
+                    onSystemModelClick = onNavigateToDetails,
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ── CORE SPECS ────────────────────────────────────────────────
+            AnimatedEntry(3) {
+                SectionHeaderRow(title = "Core Specs")
+            }
+            Spacer(Modifier.height(10.dp))
+            AnimatedEntry(4) {
+                CoreSpecsGrid(
+                    deviceInfo       = deviceInfo,
+                    onProcessorClick = onNavigateToProcessor,
+                    onOsClick        = onNavigateToSystemDetails,
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ── DIAGNOSTIC CLUSTER ────────────────────────────────────────
+            AnimatedEntry(5) {
+                SectionHeaderRow(title = "Diagnostic Cluster", badge = "4 tests")
+            }
+            Spacer(Modifier.height(10.dp))
+            AnimatedEntry(6) {
+                DiagnosticGrid(
+                    onScreen      = onNavigateToScreenTest,
+                    onSensors     = onNavigateToSensors,
+                    onBattery     = onNavigateToBattery,
+                    onPerformance = onNavigateToPerformance,
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // ── BENCHMARK CARD ────────────────────────────────────────────
+            AnimatedEntry(7) {
+                BenchmarkCard(onClick = onNavigateToBenchmark)
+            }
         }
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TOP BAR
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
-fun BenchmarkCard(onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (isPressed) 0.96f else 1f, label = "scale")
-    
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(140.dp)
-            .scale(scale)
-            .clip(RoundedCornerShape(32.dp))
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(Color(0xff1f1f1f), Color(0xff151515))
-                )
-            )
-            .border(
-                BorderStroke(
-                    1.5.dp, 
-                    if (isPressed) Color(0xff00e5ff) else Color(0xff00e5ff).copy(alpha = 0.3f)
-                ), 
-                RoundedCornerShape(32.dp)
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
+private fun PhoneTopBar(
+    authState: AuthState,
+    onLeaderboard: () -> Unit,
+    onAdmin: () -> Unit,
+    onProfile: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Glowing background effect
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xff22d3ee).copy(alpha = if (isPressed) 0.15f else 0.05f),
-                            Color.Transparent
-                        ),
-                        radius = 600f
-                    )
-                )
+        // Brand — nhỏ hơn, tinh tế hơn
+        Text(
+            text  = "PHONEC",
+            color = CyanPrimary,
+            style = LabelUppercase.copy(fontSize = 13.sp, letterSpacing = 2.2.sp),
+            modifier = Modifier.clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { onAdmin() },
         )
 
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Surface(
-                    color = Color(0xff00e5ff),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        text = "NEW",
-                        color = Color.Black,
-                        style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Black),
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Benchmark Test",
-                    color = Color.White,
-                    style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                )
-                Text(
-                    text = "GPU STRESS + FPS SCORE",
-                    color = Color(0xffbac9cc),
-                    style = TextStyle(fontSize = 12.sp, letterSpacing = 1.sp)
-                )
-            }
-            
-            // Rocket/Gauge Icon (using container.xml as placeholder for rocket style)
-            Icon(
-                painter = painterResource(id = R.drawable.container),
-                contentDescription = null,
-                tint = Color(0xff00e5ff),
-                modifier = Modifier.size(48.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun DiagnosticCardSmall(title: String, subtitle: String, iconId: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Column(
-        modifier = modifier
-            .height(140.dp)
-            .clip(RoundedCornerShape(32.dp))
-            .background(color = Color(0xff1f1f1f))
-            .clickable(onClick = onClick)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Icon(painter = painterResource(id = iconId), contentDescription = null, tint = Color(0xff00e5ff), modifier = Modifier.size(28.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(text = title, color = Color(0xffe2e2e2), style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold))
-            Text(text = subtitle, color = Color(0xffbac9cc), style = TextStyle(fontSize = 10.sp))
-        }
-    }
-}
-
-@Composable
-fun UserMenuPopup(
-    authState: AuthState,
-    profileState: UserProfileUiState,
-    onDismiss: () -> Unit,
-    onLogout: () -> Unit
-) {
-    var selectedDevice by remember { mutableStateOf<BenchmarkedDevice?>(null) }
-
-    Popup(
-        alignment = Alignment.TopEnd,
-        offset = IntOffset(0, 140),
-        onDismissRequest = onDismiss,
-        properties = PopupProperties(focusable = true)
-    ) {
-        Surface(
-            modifier = Modifier
-                .width(320.dp)
-                .padding(end = 24.dp),
-            color = Color(0xff0a0a0a),
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xff22d3ee).copy(alpha = 0.2f)),
-            shadowElevation = 16.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Leaderboard icon button
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(SurfaceLevel2)
+                    .border(1.dp, BorderDefault, RoundedCornerShape(10.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onLeaderboard() },
+                contentAlignment = Alignment.Center,
             ) {
-                // User Info Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xff22d3ee).copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (authState.photoUrl != null) {
-                            AsyncImage(
-                                model = authState.photoUrl,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(
-                                painter = painterResource(id = R.drawable.user),
-                                contentDescription = null,
-                                tint = Color(0xff22d3ee),
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    }
-
-                    Column {
-                        Text(
-                            text = authState.userName ?: "Guest User",
-                            color = Color.White,
-                            style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        )
-                        Text(
-                            text = authState.userEmail ?: "No email provider",
-                            color = Color.Gray,
-                            style = TextStyle(fontSize = 12.sp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Devices Benchmarked Section
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "DEVICES BENCHMARKED",
-                        color = Color(0xff22d3ee),
-                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Summary Info
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.03f))
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        SummaryStat("Total Tested", profileState.totalDevices.toString())
-                        SummaryStat("Highest Score", profileState.highestScore.toString())
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Compact Scrollable List
-                    Box(modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 240.dp)
-                    ) {
-                        if (profileState.benchmarkedDevices.isEmpty()) {
-                            Text(
-                                text = "No records found",
-                                color = Color.Gray,
-                                style = TextStyle(fontSize = 13.sp),
-                                modifier = Modifier.padding(vertical = 16.dp).align(Alignment.Center)
-                            )
-                        } else {
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(profileState.benchmarkedDevices) { device ->
-                                    DeviceBenchmarkRow(
-                                        device = device,
-                                        onClick = { selectedDevice = device }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Logout Button
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onLogout() }
-                        .padding(vertical = 12.dp, horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Logout,
-                        contentDescription = null,
-                        tint = Color(0xfff87171),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Sign Out",
-                        color = Color(0xfff87171),
-                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    )
-                }
-            }
-        }
-    }
-
-    if (selectedDevice != null) {
-        DeviceDetailDialog(
-            device = selectedDevice!!,
-            onDismiss = { selectedDevice = null }
-        )
-    }
-}
-
-@Composable
-fun SummaryStat(label: String, value: String) {
-    Column {
-        Text(text = label, color = Color.Gray, style = TextStyle(fontSize = 10.sp))
-        Text(text = value, color = Color.White, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold))
-    }
-}
-
-@Composable
-fun DeviceBenchmarkRow(
-    device: BenchmarkedDevice,
-    onClick: () -> Unit
-) {
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    val dateStr = device.testedAt?.let { dateFormat.format(it) } ?: "N/A"
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .clickable { onClick() }
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.phone),
-            contentDescription = null,
-            tint = Color(0xff22d3ee).copy(alpha = 0.7f),
-            modifier = Modifier.size(24.dp)
-        )
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = device.deviceModel,
-                color = Color.White,
-                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold),
-                maxLines = 1
-            )
-            Text(
-                text = "${device.chipset} • $dateStr",
-                color = Color.Gray,
-                style = TextStyle(fontSize = 10.sp),
-                maxLines = 1
-            )
-        }
-
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = device.score.toString(),
-                color = Color(0xff22d3ee),
-                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Black)
-            )
-            Text(
-                text = "${device.fps} FPS",
-                color = Color.Gray,
-                style = TextStyle(fontSize = 10.sp)
-            )
-        }
-    }
-}
-
-@Composable
-fun DeviceDetailDialog(
-    device: BenchmarkedDevice,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            color = Color(0xff121212),
-            shape = RoundedCornerShape(28.dp),
-            border = BorderStroke(1.dp, Color(0xff22d3ee).copy(alpha = 0.3f))
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "BENCHMARK DETAIL",
-                        color = Color(0xff22d3ee),
-                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                    )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.Gray)
-                    }
-                }
-
                 Icon(
-                    painter = painterResource(id = R.drawable.container),
-                    contentDescription = null,
-                    tint = Color(0xff22d3ee),
-                    modifier = Modifier.size(64.dp)
+                    painter           = painterResource(id = R.drawable.score_board),
+                    contentDescription = "Leaderboard",
+                    tint              = TextSecondary,
+                    modifier          = Modifier.size(18.dp),
                 )
+            }
 
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = device.deviceModel,
-                        color = Color.White,
-                        style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    )
-                    Text(
-                        text = device.chipset,
-                        color = Color.Gray,
-                        style = TextStyle(fontSize = 14.sp)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    DetailCard("SCORE", device.score.toString(), Modifier.weight(1f))
-                    DetailCard("FPS", device.fps.toString(), Modifier.weight(1f))
-                }
-
-                val dateFormat = SimpleDateFormat("EEEE, MMMM dd, yyyy", Locale.getDefault())
-                Text(
-                    text = "Tested on ${device.testedAt?.let { dateFormat.format(it) } ?: "N/A"}",
-                    color = Color.Gray,
-                    style = TextStyle(fontSize = 12.sp)
+            // Avatar — giữ component Avatar gốc, chỉ thêm border mới
+            Box(
+                modifier = Modifier
+                    .border(1.dp, BorderDefault, CircleShape)
+                    .padding(1.dp),
+            ) {
+                Avatar(
+                    photoUrl    = authState.photoUrl,
+                    displayName = authState.userName,
+                    size        = 34.dp,
+                    onClick     = onProfile,
                 )
             }
         }
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GREETING
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
-fun DetailCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = label, color = Color(0xff22d3ee), style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold))
-        Text(text = value, color = Color.White, style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black))
+private fun GreetingSection(userName: String?) {
+    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    val timeLabel = when {
+        hour < 12 -> "Good morning"
+        hour < 17 -> "Good afternoon"
+        else      -> "Good evening"
+    }
+    val firstName = userName?.trim()?.split(" ")?.firstOrNull() ?: "there"
+
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(
+            text  = "$timeLabel, $firstName",
+            color = TextTertiary,
+            style = LabelUppercase.copy(letterSpacing = 0.6.sp, fontSize = 11.sp),
+        )
+        Text(
+            text  = "My Phone",
+            color = TextPrimary,
+            style = DisplayLarge,
+        )
+        Text(
+            text  = "ACTIVE SESSION: ${userName?.uppercase() ?: "LOCAL DEVICE"}",
+            color = TextTertiary,
+            style = LabelUppercase.copy(fontSize = 9.sp, letterSpacing = 1.8.sp),
+        )
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HERO CARD
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
-fun DeviceInfoSectionRefined(
+private fun DeviceHeroCard(
     deviceInfo: DeviceInfo,
     onSystemModelClick: () -> Unit,
-    onProcessorClick: () -> Unit,
-    onOSVersionClick: () -> Unit
 ) {
-    Column(
+    val shape = RoundedCornerShape(28.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue   = if (isPressed) 0.985f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label         = "hero_scale",
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(32.dp))
-            .background(color = Color(0xff1b1b1b))
-            .border(BorderStroke(1.dp, Color(0xffffffff).copy(alpha = 0.05f)), RoundedCornerShape(32.dp))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(shape)
+            .background(SurfaceLevel1)
+            .border(1.dp, BorderDefault, shape)
+            .drawBehind { drawHeroGlow() }
+            .clickable(
+                interactionSource = interactionSource,
+                indication        = null,
+                onClick           = onSystemModelClick,
+            )
+            .padding(24.dp),
     ) {
-        InfoCardRefined(
-            title = "SYSTEM MODEL",
-            value = deviceInfo.model,
-            modifier = Modifier.fillMaxWidth(),
-            isHighlight = true,
-            onClick = onSystemModelClick
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
 
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            InfoCardRefined(
-                title = "PROCESSOR",
-                value = deviceInfo.processor,
-                modifier = Modifier.weight(1f),
-                onClick = onProcessorClick
+            Text(
+                text  = "SYSTEM MODEL",
+                color = TextTertiary,
+                style = LabelUppercase,
             )
-            InfoCardRefined(
-                title = "OS VERSION",
-                value = "Android ${deviceInfo.osVersion}",
-                modifier = Modifier.weight(1f),
-                onClick = onOSVersionClick
+
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                text     = deviceInfo.model,
+                color    = TextPrimary,
+                style    = DisplayLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Clip,
             )
+
+            Spacer(Modifier.height(12.dp))
+
+            // Tags
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                HeroTag("Android ${deviceInfo.osVersion}")
+                HeroTag(deviceInfo.processor.take(10))
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // Divider
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(BorderSubtle),
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            // Memory + Storage row
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                HeroStat(label = "MEMORY",  value = deviceInfo.totalRam,     suffix = "RAM")
+                HeroStat(label = "STORAGE", value = deviceInfo.totalStorage,  suffix = "TOTAL")
+            }
         }
+    }
+}
 
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            InfoCardRefined("MEMORY", "${deviceInfo.totalRam}\nRAM", Modifier.weight(1f))
-            StorageCardRefined(
-                totalStorage = deviceInfo.totalStorage,
-                modifier = Modifier.weight(1f)
+private fun DrawScope.drawHeroGlow() {
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(CyanPrimary.copy(alpha = 0.09f), Color.Transparent),
+            center = Offset.Zero,
+            radius = size.width * 0.65f,
+        ),
+        radius = size.width * 0.65f,
+        center = Offset.Zero,
+    )
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(Amber.copy(alpha = 0.04f), Color.Transparent),
+            center = Offset(size.width, size.height),
+            radius = size.width * 0.45f,
+        ),
+        radius = size.width * 0.45f,
+        center = Offset(size.width, size.height),
+    )
+}
+
+@Composable
+private fun HeroTag(text: String) {
+    Text(
+        text     = text,
+        style    = MonoSmall,
+        color    = TextTertiary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceLevel2)
+            .border(1.dp, BorderSubtle, RoundedCornerShape(4.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+    )
+}
+
+@Composable
+private fun HeroStat(label: String, value: String, suffix: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(text = label,  color = TextTertiary,  style = LabelUppercase.copy(fontSize = 9.sp))
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(text = value,  color = TextPrimary,   style = MonoLarge.copy(fontSize = 18.sp))
+            Text(text = suffix, color = TextSecondary, style = MonoSmall)
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE SPECS GRID
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun CoreSpecsGrid(
+    deviceInfo: DeviceInfo,
+    onProcessorClick: () -> Unit,
+    onOsClick: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SpecTile(
+                label    = "Processor",
+                value    = deviceInfo.processor,
+                isMono   = false,
+                onClick  = onProcessorClick,
+                modifier = Modifier.weight(1f),
+            )
+            SpecTile(
+                label      = "OS Version",
+                value      = "Android ${deviceInfo.osVersion}",
+                isMono     = false,
+                valueColor = CyanInk,
+                onClick    = onOsClick,
+                modifier   = Modifier.weight(1f),
             )
         }
     }
 }
 
 @Composable
-fun InfoCardRefined(
-    title: String, 
-    value: String, 
-    modifier: Modifier = Modifier, 
-    isHighlight: Boolean = false,
-    onClick: (() -> Unit)? = null
+private fun SpecTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    unit: String? = null,
+    isMono: Boolean = true,
+    valueColor: Color = TextPrimary,
+    onClick: (() -> Unit)? = null,
 ) {
-    val cardModifier = if (onClick != null) {
-        modifier.clickable(onClick = onClick)
-    } else {
-        modifier
-    }
+    val shape = RoundedCornerShape(14.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue   = if (isPressed && onClick != null) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label         = "spec_tile",
+    )
 
     Column(
-        modifier = cardModifier
-            .then(if (!isHighlight) Modifier.height(120.dp) else Modifier.wrapContentHeight())
-            .clip(RoundedCornerShape(12.dp))
-            .background(color = Color(0xff242424))
-            .border(BorderStroke(1.dp, Color(0xff00daf3).copy(alpha = 0.1f)), RoundedCornerShape(12.dp))
+        modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(shape)
+            .background(SurfaceLevel1)
+            .border(1.dp, BorderDefault, shape)
+            .then(
+                if (onClick != null) Modifier.clickable(
+                    interactionSource = interactionSource,
+                    indication        = null,
+                ) { onClick() } else Modifier
+            )
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            text = title,
-            color = if (onClick != null || isHighlight) Color(0xff00e5ff) else Color(0xffbac9cc),
-            style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
+            text  = label.uppercase(),
+            color = TextTertiary,
+            style = LabelUppercase,
         )
-        Text(
-            text = value,
-            color = Color(0xffe2e2e2),
-            style = TextStyle(
-                fontSize = if (isHighlight) 32.sp else 16.sp, 
-                fontWeight = FontWeight.Bold
-            ),
-            lineHeight = if (isHighlight) 24.sp else 20.sp
-        )
+        Spacer(Modifier.height(2.dp))
+        if (isMono) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(text = value, color = valueColor, style = MonoLarge)
+                if (unit != null) {
+                    Spacer(Modifier.width(3.dp))
+                    Text(text = unit, color = TextSecondary, style = MonoSmall)
+                }
+            }
+        } else {
+            Text(
+                text     = value,
+                color    = valueColor,
+                style    = MonoMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (onClick != null) {
+            Spacer(Modifier.height(2.dp))
+            Text(text = "Tap to view →", color = TextDisabled, style = MonoSmall.copy(fontSize = 10.sp))
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DIAGNOSTIC GRID — giữ nguyên iconId gốc (R.drawable.*)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun DiagnosticGrid(
+    onScreen: () -> Unit,
+    onSensors: () -> Unit,
+    onBattery: () -> Unit,
+    onPerformance: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DiagnosticTile(
+                title    = "Screen test",
+                subtitle = "OLED INTEGRITY",
+                iconId   = R.drawable.screen,
+                onClick  = onScreen,
+                modifier = Modifier.weight(1f),
+            )
+            DiagnosticTile(
+                title    = "Sensors test",
+                subtitle = "IMU CALIBRATION",
+                iconId   = R.drawable.sensor,
+                onClick  = onSensors,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DiagnosticTile(
+                title    = "Battery",
+                subtitle = "HEALTH & CYCLE",
+                iconId   = R.drawable.battery,
+                onClick  = onBattery,
+                modifier = Modifier.weight(1f),
+            )
+            DiagnosticTile(
+                title    = "Performance",
+                subtitle = "FPS & RAM LIVE",
+                iconId   = R.drawable.bottleneck,
+                onClick  = onPerformance,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
 @Composable
-fun StorageCardRefined(
-    totalStorage: String,
-    modifier: Modifier = Modifier
+private fun DiagnosticTile(
+    title: String,
+    subtitle: String,
+    iconId: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Box(
+    val shape = RoundedCornerShape(20.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue   = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label         = "diag_tile",
+    )
+
+    Column(
         modifier = modifier
-            .height(120.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(color = Color(0xff242424))
-            .border(BorderStroke(1.dp, Color(0xff00daf3).copy(alpha = 0.1f)), RoundedCornerShape(12.dp))
+            .height(130.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(shape)
+            .background(SurfaceLevel1)
+            .border(1.dp, BorderDefault, shape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication        = null,
+                onClick           = onClick,
+            )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
     ) {
+        // Icon trong box
         Box(
             modifier = Modifier
-                .fillMaxHeight(0.4f)
-                .width(3.dp)
-                .align(Alignment.CenterStart)
-                .background(Color(0xff00e5ff))
-        )
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .size(34.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(SurfaceLevel2)
+                .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center,
         ) {
-            Text(text = "STORAGE", color = Color(0xffbac9cc), style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold))
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(text = totalStorage, color = Color(0xffe2e2e2), style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold))
-                Text(text = " TOTAL", color = Color(0xffbac9cc), style = TextStyle(fontSize = 10.sp))
-            }
-            Text(text = "Internal", color = Color(0xffbac9cc), style = TextStyle(fontSize = 10.sp))
+            Icon(
+                painter           = painterResource(id = iconId),
+                contentDescription = title,
+                tint              = TextSecondary,
+                modifier          = Modifier.size(17.dp),
+            )
         }
+
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text  = title,
+                color = TextPrimary,
+                style = TitleMedium.copy(fontSize = 13.sp),
+            )
+            Text(
+                text  = subtitle,
+                color = TextTertiary,
+                style = MonoSmall.copy(fontSize = 10.sp),
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BENCHMARK CARD — giữ nguyên icon gốc R.drawable.container
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun BenchmarkCard(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(24.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue   = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label         = "bench_scale",
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(130.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(shape)
+            .background(SurfaceLevel1)
+            .border(
+                width = 1.dp,
+                color = if (isPressed) CyanPrimary else BorderCyan,
+                shape = shape,
+            )
+            .drawBehind {
+                // Cyan glow mạnh hơn khi pressed
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF22D3EE).copy(alpha = if (isPressed) 0.14f else 0.06f),
+                            Color.Transparent,
+                        ),
+                        center = Offset.Zero,
+                        radius = size.width * 0.8f,
+                    ),
+                    radius = size.width * 0.8f,
+                    center = Offset.Zero,
+                )
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication        = null,
+                onClick           = onClick,
+            )
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+    ) {
+        Row(
+            modifier              = Modifier.fillMaxSize(),
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // "NEW" badge
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(CyanPrimary)
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text  = "NEW",
+                        color = SurfaceBase,
+                        style = MonoSmall.copy(fontWeight = FontWeight.Bold, fontSize = 9.sp),
+                    )
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    text  = "Benchmark Test",
+                    color = TextPrimary,
+                    style = TitleLarge.copy(fontSize = 20.sp),
+                )
+                Text(
+                    text  = "GPU STRESS + FPS SCORE",
+                    color = TextTertiary,
+                    style = LabelUppercase.copy(letterSpacing = 1.sp),
+                )
+            }
+
+            // Icon gốc giữ nguyên
+            Icon(
+                painter           = painterResource(id = R.drawable.container),
+                contentDescription = null,
+                tint              = CyanPrimary,
+                modifier          = Modifier.size(44.dp),
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION HEADER ROW
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SectionHeaderRow(
+    title: String,
+    badge: String? = null,
+) {
+    Row(
+        modifier          = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text     = title.uppercase(),
+            color    = TextTertiary,
+            style    = LabelUppercase,
+            modifier = Modifier.weight(1f),
+        )
+        if (badge != null) {
+            Text(text = badge, color = CyanPrimary, style = MonoSmall)
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANIMATED ENTRY — stagger fade + slide
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun AnimatedEntry(
+    index: Int,
+    content: @Composable () -> Unit,
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(index * 60L)
+        visible = true
+    }
+    val alpha by animateFloatAsState(
+        targetValue   = if (visible) 1f else 0f,
+        animationSpec = tween(260, easing = EaseOut),
+        label         = "a$index",
+    )
+    val ty by animateFloatAsState(
+        targetValue   = if (visible) 0f else 12f,
+        animationSpec = tween(260, easing = EaseOut),
+        label         = "t$index",
+    )
+    Box(modifier = Modifier.graphicsLayer { this.alpha = alpha; translationY = ty }) {
+        content()
     }
 }

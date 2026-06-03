@@ -17,6 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myphonec.ui.theme.CyanPrimary
 import com.example.myphonec.ui.theme.MyPhoneCTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,7 +40,7 @@ fun DeviceDetailsScreen(
                         if (!deviceInfo.isLoading) {
                             Text(
                                 text = deviceInfo.model.uppercase(),
-                                style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp, color = Color(0xff22d3ee))
+                                style = TextStyle(fontSize = 10.sp, letterSpacing = 1.sp, color = CyanPrimary)
                             )
                         }
                     }
@@ -49,7 +50,7 @@ fun DeviceDetailsScreen(
                         Icon(
                             painter = painterResource(id = R.drawable.back_icon),
                             contentDescription = "Back",
-                            tint = Color(0xff22d3ee)
+                            tint = CyanPrimary
                         )
                     }
                 },

@@ -33,7 +33,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
+import com.example.myphonec.ui.theme.AppTheme
+import com.example.myphonec.ui.theme.LabelUppercase
 import com.example.myphonec.ui.theme.MyPhoneCTheme
+import com.example.myphonec.ui.theme.ThemePreferences
 import com.google.firebase.Firebase
 import com.google.firebase.appcheck.appCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
@@ -44,6 +47,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Load persisted theme mode (dark/light) before composition
+        ThemePreferences.init(this)
+
         // 🔑 1. Setup Debug App Check Provider - Gọi TRƯỚC KHI sử dụng bất kỳ dịch vụ Firebase nào
         setupAppCheck()
         
@@ -191,9 +197,10 @@ fun MainScreen() {
     
     val showBottomBar = currentRoute == "phone" || currentRoute == "pc"
 
+    val themedColors = AppTheme.colors
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xff131313)
+        color = themedColors.surfaceBase
     ) {
         if (startDestination != null) {
             Scaffold(
@@ -248,8 +255,22 @@ fun MainScreen() {
                             onNavigateToBenchmark = { navController.navigate("benchmark") },
                             onNavigateToLogin = { navController.navigate("login") },
                             onNavigateToLeaderboard = { navController.navigate("leaderboard") },
-                            onNavigateToAdmin = { navController.navigate("admin") }
-                        ) 
+                            onNavigateToAdmin = { navController.navigate("admin") },
+                            onNavigateToProfile = { navController.navigate("profile") }
+                        )
+                    }
+                    composable("profile") {
+                        ProfileScreen(
+                            authViewModel = authViewModel,
+                            userProfileViewModel = userProfileViewModel,
+                            onBack = { navController.popBackStack() },
+                            onSignOut = {
+                                authViewModel.signOut()
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
                     }
                     composable("pc") { 
                         PCToolsScreen(
@@ -339,7 +360,7 @@ fun MainScreen() {
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = Color(0xff22d3ee))
+                CircularProgressIndicator(color = AppTheme.colors.cyanPrimary)
             }
         }
     }
@@ -349,11 +370,12 @@ fun MainScreen() {
 fun BottomNavigationBar(navController: androidx.navigation.NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val colors = AppTheme.colors
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black)
+            .background(colors.surfaceBase)
     ) {
         Row(
             modifier = Modifier
@@ -361,7 +383,7 @@ fun BottomNavigationBar(navController: androidx.navigation.NavHostController) {
                 .fillMaxWidth()
                 .height(68.dp)
                 .clip(RoundedCornerShape(34.dp))
-                .background(Color(0xFF111111)),
+                .background(colors.surfaceBase),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -378,7 +400,7 @@ fun BottomNavigationBar(navController: androidx.navigation.NavHostController) {
                         .height(50.dp)
                         .width(110.dp)
                         .clip(RoundedCornerShape(25.dp))
-                        .background(if (isSelected) Color(0xff22d3ee).copy(alpha = 0.15f) else Color.Transparent)
+                        .background(if (isSelected) colors.cyanPrimary.copy(alpha = 0.15f) else Color.Transparent)
                         .clickable {
                             if (!isSelected) {
                                 navController.navigate(route) {
@@ -399,14 +421,13 @@ fun BottomNavigationBar(navController: androidx.navigation.NavHostController) {
                         Icon(
                             painter = painterResource(id = iconRes),
                             contentDescription = null,
-                            tint = if (isSelected) Color(0xff22d3ee) else Color(0xff71717a),
+                            tint = if (isSelected) colors.cyanPrimary else colors.textTertiary,
                             modifier = Modifier.size(22.dp)
                         )
                         Text(
                             text = label,
-                            color = if (isSelected) Color(0xff22d3ee) else Color(0xff71717a),
-                            style = TextStyle(
-                                fontSize = 11.sp,
+                            color = if (isSelected) colors.cyanPrimary else colors.textTertiary,
+                            style = LabelUppercase.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 0.5.sp
                             )
